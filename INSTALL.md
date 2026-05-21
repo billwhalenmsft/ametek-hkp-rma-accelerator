@@ -2,6 +2,9 @@
 
 > Customer-ready install for the **AMETEK Haydon Kerk Pittman (HKP) RMA Returns Monitor**
 > model-driven app, on top of the existing `WarrantyandClaimOperations` Dataverse base.
+>
+> **Current release:** `RMAReturnsMonitor` v1.0.0.6 (managed) — smoke-tested
+> end-to-end on a clean CE Mfg environment 2026-05-21.
 
 ## What you get
 
@@ -24,8 +27,11 @@ All packaged as the `RMAReturnsMonitor` Power Platform solution.
 1. **Power Platform environment** with Dataverse, the existing
    `WarrantyandClaimOperations` v1.0.0.14 solution already installed, and
    **System Administrator** role for the installing identity.
-2. **Approvals app** enabled in Teams (used by the manager-approval flow).
-3. **Tooling on your machine:**
+2. **AI Builder enabled** in the target environment — the solution includes a
+   bundled `RMA Email Extractor` AI model (component type 401). Import will
+   fail in environments where AI Builder is disabled.
+3. **Approvals app** enabled in Teams (used by the manager-approval flow).
+4. **Tooling on your machine:**
    - PowerShell 7+
    - [Power Platform CLI](https://learn.microsoft.com/en-us/power-platform/developer/cli/introduction)
      ```powershell
@@ -33,7 +39,7 @@ All packaged as the `RMAReturnsMonitor` Power Platform solution.
      ```
    - [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli)
      (`az login` — scripts use Azure CLI to acquire Dataverse tokens)
-4. **Two connections** ready in your target environment (the scripts re-use
+5. **Two connections** ready in your target environment (the scripts re-use
    the connection-reference logical names from this repo; if your env names
    differ, see *Connection refs* below):
    - Microsoft Dataverse — service principal or admin account
@@ -56,17 +62,27 @@ Pick **one**:
 
 **A. Managed (recommended for customer envs):**
 ```powershell
+# pac --force-overwrite DELETES the source ZIP on failure -- always work
+# from a copy so a failed import doesn't destroy your only artifact.
+Copy-Item customers/ametek/hkp_rma/solution/RMAReturnsMonitor_managed.zip _import.zip -Force
 pac solution import `
-  --path customers/ametek/hkp_rma/solution/RMAReturnsMonitor_managed.zip `
+  --path _import.zip `
   --activate-plugins --publish-changes
 ```
 
 **B. Unmanaged (dev / further customization):**
 ```powershell
+Copy-Item customers/ametek/hkp_rma/solution/RMAReturnsMonitor_unmanaged.zip _import.zip -Force
 pac solution import `
-  --path customers/ametek/hkp_rma/solution/RMAReturnsMonitor_unmanaged.zip `
+  --path _import.zip `
   --activate-plugins --publish-changes
 ```
+
+> **Expected non-fatal warning:** `An error occurred while trying to run
+> solution checker enforcement on the importing solution.` — this is a
+> post-import telemetry hook that occasionally times out. The solution + the
+> *Published All Customizations* line that follow it confirm success. Verify
+> with `pac solution list | findstr RMAReturnsMonitor`.
 
 This installs:
 - All `rma_*` tables (claim, approval record/history, plant, plant approver,
@@ -76,9 +92,9 @@ This installs:
 - 5 PA flows (Email Monitor, Auto-Assign Plant, Stage Tracker, Request
   Manager Approval, Push Resolution to ERP stub)
 - 4 fluent icons + ribbon JS
-
-### 3. Register flow trigger webhooks (one-time, per environment)
-
+- `RMA Email Extractor` AI Builder model (used by Email Monitor flow)
+- `rma_MonitoredMailbox` solution environment variable (set this post-install
+   to the inbox you want the Email Monitor flow polling — see *Step 5* below)
 > Known Power Platform behavior: flows imported via `pac solution import`
 > get installed and activated, but their Dataverse trigger webhooks are
 > **not registered until they are opened + saved once** in the maker UI.
@@ -94,7 +110,15 @@ For **each** of these flows, in [make.powerautomate.com](https://make.powerautom
 …open, click **Edit** → **Save** (no changes needed). After saving once, the
 flow fires automatically on the configured Dataverse trigger forever after.
 
-### 4. Seed reference data
+### 4. Set the monitored mailbox
+
+In the maker UI ([make.powerapps.com](https://make.powerapps.com) →
+*Solutions* → *RMAReturnsMonitor* → *Environment variables* → `rma_MonitoredMailbox`),
+set the **Current value** to the inbox the Email Monitor flow should poll
+(e.g. `rma-intake@customer.com`). Default value is `admin@...` from the
+source env and will not exist in your tenant.
+
+### 5. Seed reference data
 
 From the repo root, in this order:
 
@@ -143,12 +167,18 @@ names (matching the Mfg Gold Template source env):
 | Microsoft Dataverse | `cr74e_warrantyChecker.shared_commondataserviceforapps.shared-commondataser-9933c9ef-b98c-4170-8251-695bb41a22f2` |
 | Microsoft Approvals | `cr74e_sharedapprovals_453c9` |
 
-If your target environment uses different conn-ref names, after import:
+**These conn-ref names will NOT exist in a fresh customer environment.**
+After import, the 5 flows will be off + show a red connection banner. For
+each flow:
 
-1. Open each flow in the maker UI
-2. Replace the broken/red connection on each action with one bound to the
-   right account in the target env
-3. Save the flow
+1. Open the flow in the maker UI ([make.powerautomate.com](https://make.powerautomate.com))
+2. Click the red banner → *+ New connection* → sign in with the target-env
+   service account (must have a Dataverse user + Teams Approvals access)
+3. Save the flow — this both binds the connection AND registers the
+   Dataverse trigger webhook (combines this step with *Step 3* above)
+4. Turn the flow ON
+
+Do this for all 5 flows listed in *Step 3*.
 
 ---
 
