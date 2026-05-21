@@ -1,0 +1,6 @@
+{
+  "SimulatedEmailId": "b2de82be-f14e-f111-bec6-000d3a5aed87",
+  "Subject": "[SIMULATED] RMA request - WTB-MOTOR-9999 - failed after 2 weeks",
+  "InboundUnprocessedCount": 1,
+  "Notes": "Real email pipeline requires Bill to send to rmarequest@D365DemoTSCE30330346.onmicrosoft.com from any mailbox. Email Monitor flow last ran 2026-05-11; no events since."
+}

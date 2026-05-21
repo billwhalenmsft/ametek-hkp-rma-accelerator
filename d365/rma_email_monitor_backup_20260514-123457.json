@@ -1,0 +1,305 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "$authentication": {
+      "defaultValue": {},
+      "type": "SecureObject"
+    },
+    "$connections": {
+      "defaultValue": {},
+      "type": "Object"
+    }
+  },
+  "triggers": {
+    "When_a_new_email_arrives_in_a_shared_mailbox_(V2)": {
+      "recurrence": {
+        "frequency": "Minute",
+        "interval": 1
+      },
+      "evaluatedRecurrence": {
+        "frequency": "Minute",
+        "interval": 1
+      },
+      "splitOn": "@triggerOutputs()?['body/value']",
+      "metadata": {
+        "operationMetadataId": "b57e772d-7e5a-4bc7-9ffc-503222a82d86"
+      },
+      "type": "OpenApiConnection",
+      "inputs": {
+        "parameters": {
+          "mailboxAddress": "rmarequest@D365DemoTSCE30330346.onmicrosoft.com;",
+          "importance": "Any",
+          "hasAttachments": false,
+          "includeAttachments": false,
+          "folderId": "Inbox"
+        },
+        "host": {
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+          "connectionName": "shared_office365",
+          "operationId": "SharedMailboxOnNewEmailV2"
+        },
+        "authentication": "@parameters('$authentication')"
+      }
+    }
+  },
+  "actions": {
+    "Run_RMA_Prompt": {
+      "runAfter": {},
+      "metadata": {
+        "operationMetadataId": "098db6bb-5859-4614-bcc7-d8fcbeb5d916",
+        "flowSystemMetadata": {
+          "portalOperationApiDisplayNameOverride": "AI Builder",
+          "portalOperationIconOverride": "https://content.powerapps.com/resource/makerx/static/pauto/images/designeroperations/aibuilderIcon2026.8e878397.png",
+          "portalOperationId": "aibuilderpredict_customprompt",
+          "portalOperationBrandColorOverride": "#0A76C4",
+          "portalOperationApiTierOverride": "Standard",
+          "portalOperationGroup": "aibuilder"
+        }
+      },
+      "type": "OpenApiConnection",
+      "inputs": {
+        "parameters": {
+          "recordId": "47496811-062f-4506-af6e-273b6e2f805f",
+          "item/requestv2/EmailBody": "@triggerOutputs()?['body/body']",
+          "item/source": "{\"consumptionSource\":\"PowerAutomate\",\"partnerSource\":\"AIBuilder\",\"consumptionSourceVersion\":\"Flow\",\"partnerSourceVersion\":\"b26a7f4b-b181-cd5e-ff45-454939890b06\"}"
+        },
+        "host": {
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+          "connectionName": "shared_commondataserviceforapps",
+          "operationId": "aibuilderpredict_customprompt"
+        },
+        "authentication": "@parameters('$authentication')"
+      }
+    },
+    "Parse_RMA_Fields": {
+      "runAfter": {
+        "Run_RMA_Prompt": [
+          "Succeeded"
+        ]
+      },
+      "metadata": {
+        "operationMetadataId": "5e71e1fe-2860-41fc-aea3-d213883efac2"
+      },
+      "type": "ParseJson",
+      "inputs": {
+        "content": "@outputs('Run_RMA_Prompt')?['body/responsev2/predictionOutput/text']",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "Company": {
+              "type": "string"
+            },
+            "Email": {
+              "type": "string"
+            },
+            "Phone": {
+              "type": "string"
+            },
+            "ReturnAddress": {
+              "type": "string"
+            },
+            "Quantity": {
+              "type": "string"
+            },
+            "PONumber": {
+              "type": "string"
+            },
+            "DateCodeOrSerial": {
+              "type": "string"
+            },
+            "PartNumber": {
+              "type": "string"
+            },
+            "MfgLocation": {
+              "type": "string"
+            },
+            "ComplaintReason": {
+              "type": "string"
+            },
+            "ComplaintReasonOther": {
+              "type": "string"
+            },
+            "SalesRep": {
+              "type": "string"
+            },
+            "HowDetected": {
+              "type": "string"
+            },
+            "ProductDescription": {
+              "type": "string"
+            },
+            "WhereDetected": {
+              "type": "string"
+            },
+            "NCRNumber": {
+              "type": "string"
+            },
+            "OtherComments": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "Compose_Confidence_Score": {
+      "runAfter": {
+        "Parse_RMA_Fields": [
+          "Succeeded"
+        ]
+      },
+      "type": "Compose",
+      "inputs": "@div(add(add(add(add(add(if(greater(length(coalesce(body('Parse_RMA_Fields')?['Company'],'')),0),1,0),if(greater(length(coalesce(body('Parse_RMA_Fields')?['Email'],'')),0),1,0)),if(greater(length(coalesce(body('Parse_RMA_Fields')?['PartNumber'],'')),0),1,0)),if(greater(length(coalesce(body('Parse_RMA_Fields')?['ComplaintReason'],'')),0),1,0)),if(greater(length(coalesce(body('Parse_RMA_Fields')?['Quantity'],'')),0),1,0)),if(greater(length(coalesce(body('Parse_RMA_Fields')?['PONumber'],'')),0),1,0)),6.0)"
+    },
+    "Add_to_rma_emaillog": {
+      "runAfter": {
+        "Compose_Confidence_Score": [
+          "Succeeded"
+        ]
+      },
+      "metadata": {
+        "operationMetadataId": "04b069e3-1e82-4ef1-9604-edfea3f2dae9"
+      },
+      "type": "OpenApiConnection",
+      "inputs": {
+        "parameters": {
+          "entityName": "rma_emaillogs",
+          "item/rma_subject": "@triggerOutputs()?['body/subject']",
+          "item/rma_fromaddress": "@triggerOutputs()?['body/from']",
+          "item/rma_recipient": "@triggerOutputs()?['body/toRecipients']",
+          "item/rma_receiveddate": "@triggerOutputs()?['body/receivedDateTime']",
+          "item/rma_sentdate": "@triggerOutputs()?['body/receivedDateTime']",
+          "item/rma_bodypreview": "@if(greater(length(coalesce(triggerOutputs()?['body/bodyPreview'],'')), 4000), substring(triggerOutputs()?['body/bodyPreview'], 0, 4000), coalesce(triggerOutputs()?['body/bodyPreview'],''))",
+          "item/rma_body": "@coalesce(triggerOutputs()?['body/body'],'')",
+          "item/rma_messageid": "@triggerOutputs()?['body/id']",
+          "item/rma_direction": 100000000,
+          "item/rma_isprocessed": false,
+          "item/rma_sentby": "@coalesce(triggerOutputs()?['body/from'],'')"
+        },
+        "host": {
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+          "connectionName": "shared_commondataserviceforapps",
+          "operationId": "CreateRecord"
+        },
+        "authentication": "@parameters('$authentication')"
+      }
+    },
+    "Check_Confidence_Threshold": {
+      "actions": {
+        "Link_EmailLog_To_Claim": {
+          "runAfter": {
+            "Create_RMA_Claim": [
+              "Succeeded"
+            ]
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "UpdateRecord"
+            },
+            "parameters": {
+              "entityName": "rma_emaillogs",
+              "recordId": "@outputs('Add_to_rma_emaillog')?['body/rma_emaillogid']",
+              "item/rma_Claim@odata.bind": "@concat('/rma_claims(', outputs('Create_RMA_Claim')?['body/rma_claimid'], ')')",
+              "item/rma_isprocessed": true
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "Create_RMA_Claim": {
+          "runAfter": {},
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "CreateRecord"
+            },
+            "parameters": {
+              "entityName": "rma_claims",
+              "item/rma_claimnumber": "@concat('RMA-EM-', formatDateTime(utcNow(),'yyMMddHHmmss'))",
+              "item/rma_customername": "@coalesce(body('Parse_RMA_Fields')?['Company'],'Unknown Customer')",
+              "item/rma_customeremail": "@coalesce(body('Parse_RMA_Fields')?['Email'], triggerOutputs()?['body/from'])",
+              "item/rma_contactname": "@triggerOutputs()?['body/from']",
+              "item/rma_customerregion": 100000000,
+              "item/rma_partnumber": "@coalesce(body('Parse_RMA_Fields')?['PartNumber'],'UNKNOWN')",
+              "item/rma_quantity": "@if(equals(coalesce(body('Parse_RMA_Fields')?['Quantity'],''),''),1,int(body('Parse_RMA_Fields')?['Quantity']))",
+              "item/rma_failuredescription": "@coalesce(body('Parse_RMA_Fields')?['ComplaintReason'],'(no description provided)')",
+              "item/rma_failuremode": 100000005,
+              "item/rma_status": 100000000,
+              "item/rma_warrantystatus": 100000003,
+              "item/rma_sourceemailid": "@triggerOutputs()?['body/id']",
+              "item/rma_createddate": "@triggerOutputs()?['body/receivedDateTime']"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        }
+      },
+      "runAfter": {
+        "Add_to_rma_emaillog": [
+          "Succeeded"
+        ]
+      },
+      "else": {
+        "actions": {
+          "Mark_For_Review": {
+            "runAfter": {},
+            "type": "OpenApiConnection",
+            "inputs": {
+              "host": {
+                "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+                "connectionName": "shared_commondataserviceforapps",
+                "operationId": "UpdateRecord"
+              },
+              "parameters": {
+                "entityName": "rma_emaillogs",
+                "recordId": "@outputs('Add_to_rma_emaillog')?['body/rma_emaillogid']",
+                "item/rma_isprocessed": false
+              },
+              "authentication": "@parameters('$authentication')"
+            }
+          }
+        }
+      },
+      "expression": {
+        "and": [
+          {
+            "greaterOrEquals": [
+              "@outputs('Compose_Confidence_Score')",
+              0.8
+            ]
+          }
+        ]
+      },
+      "type": "If"
+    },
+    "Send_Acknowledgement": {
+      "runAfter": {
+        "Check_Confidence_Threshold": [
+          "Succeeded",
+          "Failed",
+          "Skipped"
+        ]
+      },
+      "type": "OpenApiConnection",
+      "inputs": {
+        "host": {
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+          "connectionName": "shared_office365",
+          "operationId": "SendEmailV2"
+        },
+        "parameters": {
+          "emailMessage": {
+            "To": "@coalesce(body('Parse_RMA_Fields')?['Email'], triggerOutputs()?['body/from'])",
+            "Subject": "Your RMA request has been received",
+            "Body": "<p>Hi,</p>\r\n<p>Thanks for your email regarding part <b>@{coalesce(body('Parse_RMA_Fields')?['PartNumber'],'(part not detected)')}</b>.</p>\r\n<p>We've logged your request and our team will review it shortly. You'll either receive confirmation that an RMA claim has been opened, or we'll reach back out with questions/updates.</p>\r\n<p>— RMA Team<br/>HKP / Ametek</p>",
+            "Importance": "Normal"
+          }
+        },
+        "authentication": "@parameters('$authentication')"
+      }
+    }
+  }
+}

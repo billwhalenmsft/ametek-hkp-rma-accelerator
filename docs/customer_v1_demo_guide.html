@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>HKP RMA Operations — v1 Demo Guide</title>
+<style>
+  :root {
+    --ms-blue: #0078D4; --ms-blue-dark: #005A9E;
+    --ametek: #003a70; --ametek-accent: #c8102e;
+    --bg: #f7f8fb; --paper: #ffffff; --border: #e3e7ee;
+    --text: #1a1f2c; --muted: #5b6577;
+    --good: #16a34a; --warn: #d97706; --bad: #dc2626;
+    --gold: #fff8dd; --gold-border: #d97706;
+    --info: #e6f3fb; --info-border: #0078D4;
+    --green-bg: #e8f7ed; --green-border: #16a34a;
+    --purple-bg: #f3edff; --purple-border: #7c3aed;
+    --hero1: #c8102e; --hero2: #0078d4; --hero3: #16a34a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.55; font-size: 14.5px; }
+
+  header.top {
+    background: linear-gradient(135deg, var(--ametek) 0%, var(--ms-blue) 100%);
+    color: white; padding: 24px 36px;
+  }
+  header.top h1 { margin: 0; font-size: 24px; font-weight: 600; }
+  header.top p  { margin: 4px 0 0; opacity: .92; font-size: 14px; }
+  header.top .meta { margin-top: 10px; font-size: 12px; opacity: .85; display: flex; gap: 16px; flex-wrap: wrap; }
+  header.top .meta b { color: #ffd84d; }
+
+  .actions {
+    background: white; border-bottom: 1px solid var(--border);
+    padding: 10px 36px; display: flex; gap: 8px;
+  }
+  .actions button {
+    background: var(--ms-blue); color: white; border: none; padding: 7px 14px;
+    border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 12.5px;
+  }
+  .actions button.secondary { background: white; border: 1px solid var(--border); color: var(--text); }
+  .actions a.link-btn {
+    background: var(--ametek); color: white; padding: 7px 14px; border-radius: 4px;
+    text-decoration: none; font-weight: 500; font-size: 12.5px;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr) 320px;
+    gap: 0;
+    max-width: 1640px;
+    margin: 0 auto;
+  }
+
+  nav.left {
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
+    padding: 24px 18px; background: white; border-right: 1px solid var(--border);
+    font-size: 13px;
+  }
+  nav.left h3 { margin: 0 0 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+  nav.left a { display: block; padding: 6px 8px; color: var(--text); text-decoration: none; border-radius: 4px; margin-bottom: 2px; }
+  nav.left a:hover { background: #eef3fb; }
+  nav.left a.section { font-weight: 600; }
+  nav.left a.sub    { padding-left: 22px; font-size: 12.5px; color: var(--muted); }
+  nav.left .sep { border-top: 1px solid var(--border); margin: 14px 0 10px; }
+
+  main { padding: 28px 40px 80px; min-width: 0; }
+  main h2 { font-size: 22px; margin: 36px 0 6px; padding-top: 16px; border-top: 3px solid var(--ms-blue); padding-top: 14px; color: var(--ametek); }
+  main h2:first-of-type { margin-top: 0; }
+  main h3 { font-size: 16px; margin: 22px 0 8px; color: var(--ms-blue-dark); }
+  main p { margin: 8px 0; }
+
+  .arc {
+    background: white; border: 1px solid var(--border); border-radius: 10px;
+    padding: 22px 26px; margin: 18px 0; box-shadow: 0 1px 3px rgba(0,0,0,.04);
+    page-break-inside: avoid;
+  }
+  .arc.hero1 { border-left: 6px solid var(--hero1); }
+  .arc.hero2 { border-left: 6px solid var(--hero2); }
+  .arc.hero3 { border-left: 6px solid var(--hero3); }
+
+  .say, .show, .roi, .frontier, .callout {
+    border-left: 4px solid; border-radius: 6px;
+    padding: 12px 16px; margin: 10px 0;
+  }
+  .say { background: var(--gold); border-color: var(--gold-border); font-style: italic; }
+  .say::before { content: "🎤 "; font-style: normal; }
+  .show { background: var(--info); border-color: var(--info-border); }
+  .show::before { content: "👀 "; }
+  .roi { background: var(--green-bg); border-color: var(--green-border); }
+  .roi::before { content: "💰 "; }
+  .frontier { background: var(--purple-bg); border-color: var(--purple-border); }
+  .frontier::before { content: "🚀 "; }
+  .callout.info  { background: var(--info); border-color: var(--info-border); }
+  .callout.warn  { background: #fef3c7; border-color: #d97706; }
+  .callout.good  { background: var(--green-bg); border-color: var(--green-border); }
+  .callout.danger{ background: #fee2e2; border-color: #dc2626; }
+
+  .click {
+    display: grid; grid-template-columns: 36px 1fr; gap: 14px;
+    padding: 14px 0; border-bottom: 1px dashed var(--border);
+  }
+  .click:last-of-type { border-bottom: none; }
+  .num-circle {
+    background: var(--ms-blue); color: white; width: 30px; height: 30px;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 13px;
+  }
+
+  .copyable {
+    background: #f0f4ff; border: 2px solid var(--info-border); border-radius: 8px;
+    padding: 12px 14px; margin: 10px 0; font-family: ui-monospace, "Consolas", monospace;
+    font-size: 13.5px; position: relative;
+  }
+  .copyable code { display: block; white-space: pre-wrap; word-break: break-word; }
+  .copyable .copy-btn {
+    position: absolute; top: 8px; right: 8px;
+    background: white; border: 1px solid var(--border); border-radius: 4px;
+    padding: 3px 9px; font-size: 11px; cursor: pointer;
+    font-family: "Segoe UI", system-ui, sans-serif;
+  }
+  .copyable .copy-btn:hover { background: #e6f3fb; }
+  .copyable .copy-btn.copied { background: #d4f7dd; border-color: #16a34a; color: #16a34a; }
+
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13.5px; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: #f3f6fb; color: var(--ametek); font-weight: 600; font-size: 12.5px; text-transform: uppercase; letter-spacing: .4px; }
+  tr:nth-child(even) td { background: #fafbfd; }
+
+  aside.right {
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
+    padding: 24px 18px; background: white; border-left: 1px solid var(--border);
+    font-size: 13px;
+  }
+  aside.right h3 { margin: 0 0 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+  aside.right .card {
+    background: #f7f8fb; border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; margin: 10px 0;
+  }
+  aside.right .card h4 { margin: 0 0 4px; font-size: 13px; color: var(--ametek); }
+  aside.right .card p  { margin: 2px 0; font-size: 12.5px; color: var(--muted); }
+  aside.right .pill {
+    display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-size: 11px; margin: 2px 4px 2px 0;
+  }
+  aside.right .pill.good { background: var(--green-bg); color: var(--good); }
+  aside.right .pill.warn { background: #fef3c7; color: #b45309; }
+  aside.right .pill.bad  { background: #fee2e2; color: #991b1b; }
+  aside.right .pill.info { background: var(--info); color: var(--info-border); }
+
+  @media print {
+    nav.left, aside.right, .actions { display: none; }
+    .layout { display: block; }
+    main { padding: 0 24px; }
+    body { background: white; font-size: 11pt; }
+    .arc, .copyable { page-break-inside: avoid; }
+    .copy-btn { display: none; }
+    header.top { background: var(--ametek) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>HKP RMA Operations — v1 Demo Guide</h1>
+  <p>AMETEK Haydon Kerk Pittman · Shared-mailbox → AI extraction → Model-Driven App triage</p>
+  <div class="meta">
+    <span><b>For:</b> Customer review &amp; sign-off</span>
+    <span><b>Duration:</b> 5-minute demo · 25-minute deep-dive</span>
+    <span><b>Status:</b> <b>v1 LIVE</b> · 13 sample claims · 5 plants · agent JS + commands wired</span>
+    <span><b>Environment:</b> Mfg Gold Template · solution <code>RMAReturnsMonitor</code></span>
+  </div>
+</header>
+
+<div class="actions">
+  <button onclick="window.print()">🖨 Print / Save as PDF</button>
+  <a class="link-btn" href="https://org6feab6b5.crm.dynamics.com/main.aspx?appid=8661f960-1f4e-f111-bec6-000d3a5aed87" target="_blank">▶ Open the App</a>
+  <a class="link-btn" href="https://org6feab6b5.crm.dynamics.com/WebResources/rma_/board/claims_board.html" target="_blank">📋 Open the Kanban</a>
+  <button class="secondary" onclick="window.scrollTo(0,0)">Top</button>
+</div>
+
+<div class="layout">
+
+  <nav class="left">
+    <h3>1-minute overview</h3>
+    <a href="#what" class="section">1. What this is</a>
+    <a href="#why" class="section">2. Why it matters</a>
+
+    <div class="sep"></div>
+    <h3>The 5-minute click-through</h3>
+    <a href="#demo" class="section">3. The demo path</a>
+    <a href="#step-1" class="sub">— Step 1: Email arrives</a>
+    <a href="#step-2" class="sub">— Step 2: Triage queue</a>
+    <a href="#step-3" class="sub">— Step 3: Create claim</a>
+    <a href="#step-4" class="sub">— Step 4: Pizza Tracker</a>
+    <a href="#step-5" class="sub">— Step 5: Resolve</a>
+
+    <div class="sep"></div>
+    <h3>Reference</h3>
+    <a href="#architecture" class="section">4. Architecture</a>
+    <a href="#what-is-included" class="section">5. What's in the box</a>
+    <a href="#openview-checklist" class="section">6. Operator checklist</a>
+    <a href="#phase2" class="section">7. Phase 2 backlog</a>
+    <a href="#admin" class="section">8. Admin / setup</a>
+  </nav>
+
+  <main>
+
+    <h2 id="what">1. What this is</h2>
+
+    <div class="arc hero2">
+      <p>The HKP RMA Operations app is a <b>Model-Driven workbench</b> for warranty/RMA triage engineers at AMETEK Haydon Kerk Pittman. It replaces the spreadsheet+inbox workflow with:</p>
+      <ul>
+        <li>A <b>shared mailbox listener</b> (<code>rmarequest@D365DemoTSCE30330346.onmicrosoft.com</code>) that ingests every customer return request</li>
+        <li><b>AI Builder</b> that extracts 17 structured fields from the email body (part #, customer name, failure mode, etc.)</li>
+        <li>A <b>queue UI</b> in Dataverse where the operator reviews the AI's extraction and converts it to an RMA Claim</li>
+        <li>A <b>Pizza Tracker</b> on every claim form showing exactly which stage it's in and how long it's been there</li>
+        <li><b>One-click resolve commands</b> (Credit / Replacement / Repair / Deny) with threshold-based manager approval gating</li>
+        <li>A <b>kanban board</b> for the team lead showing every open claim grouped by status</li>
+      </ul>
+      <div class="callout good"><b>The headline:</b> from email arrival to closed RMA in &lt;5 minutes — instead of the multi-day cycle the previous spreadsheet workflow allowed.</div>
+    </div>
+
+    <h2 id="why">2. Why it matters</h2>
+
+    <div class="arc">
+      <table>
+        <tr><th>Outcome</th><th>Before v1</th><th>With v1</th></tr>
+        <tr><td>Email → claim creation time</td><td>30–60 min (manual data entry)</td><td>&lt;60 sec (AI pre-fills, operator confirms)</td></tr>
+        <tr><td>Visibility into in-flight claims</td><td>Engineer-by-engineer; no rollup</td><td>Live kanban; 5-stage Pizza Tracker on every claim</td></tr>
+        <tr><td>Plant routing</td><td>Manual lookup against part-number prefix table</td><td>Auto-assign flow uses the prefix rules</td></tr>
+        <tr><td>Approval gating</td><td>Slack / hallway / email chain</td><td>Modeled per-plant threshold; auto-creates approval record above limit</td></tr>
+        <tr><td>Aging / SLA visibility</td><td>None</td><td>Pizza Tracker shows days in current stage + total claim age</td></tr>
+      </table>
+      <div class="roi"><b>v1 outcome target:</b> Reduce RMA processing cost per case by 60% and time-to-decision by 80% by combining shared-mailbox ingest with AI extraction and structured triage.</div>
+    </div>
+
+    <h2 id="demo">3. The 5-minute click-through demo</h2>
+
+    <p>Demo this end-to-end. The whole flow is live and reproducible.</p>
+
+    <div class="arc hero2">
+
+      <h3 id="step-1">Step 1 — Customer email arrives</h3>
+      <div class="click">
+        <div class="num-circle">1</div>
+        <div>
+          <p>Send a test RMA email to:</p>
+          <div class="copyable">
+            <strong>RECIPIENT:</strong><br>
+            <code>rmarequest@D365DemoTSCE30330346.onmicrosoft.com</code>
+          </div>
+          <p>Suggested test subject + body:</p>
+          <div class="copyable">
+            <strong>SUBJECT:</strong><br>
+            <code>RMA request — WTB-MOTOR-9999 failing on bench test</code>
+          </div>
+          <div class="copyable">
+            <strong>BODY:</strong><br>
+<code>Hi RMA Team,
+
+We received iDEA-57 motor part WTB-MOTOR-9999 last week. Three units are
+showing intermittent stall under load and one failed completely in our
+QA test rig. PO 88542. Need a replacement plus an RCA on the failure.
+
+Quantity: 4
+Customer: Andersen Windows
+Region: Americas
+Detected during: Production line ramp-up
+
+Thanks,
+QA Engineering, Andersen</code>
+          </div>
+          <div class="show">
+            The <b>RMA Email Monitor</b> Power Automate flow polls the mailbox every minute, runs the <b>RMA Email Extractor</b> AI Builder prompt, and writes the parsed fields into both a SharePoint backup list AND a Dataverse <code>rma_emaillog</code> record (direction = Inbound, isProcessed = false).
+          </div>
+        </div>
+      </div>
+
+      <h3 id="step-2">Step 2 — Operator opens the inbox queue</h3>
+      <div class="click">
+        <div class="num-circle">2</div>
+        <div>
+          <p>In the app, click <b>Email Inbox</b> in the left nav.</p>
+          <div class="show">
+            The default view <b>"Inbound — Unprocessed"</b> shows every Inbound email with <code>isProcessed = false</code>, newest first. The new test email is at the top with the body preview, sender address, and a blank Linked Claim column.
+          </div>
+          <div class="say">
+            "This is the morning triage queue. Yesterday's emails are already gone — they're in the Processed view. This is the work for today."
+          </div>
+        </div>
+      </div>
+
+      <h3 id="step-3">Step 3 — Convert email to RMA Claim</h3>
+      <div class="click">
+        <div class="num-circle">3</div>
+        <div>
+          <p>Click the email row → form opens with two tabs:</p>
+          <ul>
+            <li><b>General</b> — From, Recipient, Received, Subject, Body Preview, Body (full)</li>
+            <li><b>Linked Claim</b> — empty (no claim yet)</li>
+          </ul>
+          <p>Click the command bar <b>"Create RMA Claim from Email"</b> (see the Bill TODO for wiring this button — the function is already loaded; the click handler points to <code>HKPCommands.createClaimFromEmail</code>).</p>
+          <div class="show">
+            A <b>Quick Create</b> dialog opens with Customer Name, Customer Email, Failure Description, and Source Email ID prefilled from the email. The operator picks the Customer Region, Part Number, Quantity, Failure Mode, and (optionally) Assigned Plant — or leaves blank to let the auto-assign flow handle it.
+          </div>
+          <div class="say">
+            "Notice we didn't retype anything. The AI extracted the body, and we just confirmed the structured fields. Five seconds, not five minutes."
+          </div>
+        </div>
+      </div>
+
+      <h3 id="step-4">Step 4 — Watch the Pizza Tracker on the new claim</h3>
+      <div class="click">
+        <div class="num-circle">4</div>
+        <div>
+          <p>The Quick Create saves and (depending on how Bill wires it) the operator navigates to the new RMA Claim form.</p>
+          <div class="show">
+            At the top of the form: the <b>Pizza Tracker</b> — a 5-step visual showing <span class="pill info">New</span> → <span class="pill warn">Triage</span> → Investigation → Decision → Closed. The first dot is filled and pulsing blue. Below it: "<b>In New for 0 days · Total age: 0 days</b>".
+          </div>
+          <p>Below the tracker: 4 tabs</p>
+          <ul>
+            <li><b>General</b> — Customer &amp; Part section · Plant &amp; Status section · Resolution section</li>
+            <li><b>Notes</b> — Claim Notes subgrid · Timeline (activities, emails, posts)</li>
+            <li><b>Approvals</b> — Approval Requests · Approval History</li>
+            <li><b>Emails</b> — Email Log subgrid (the original inbound email is already linked here, plus any outbound replies)</li>
+          </ul>
+          <div class="callout info"><b>The Pizza Tracker is the heart of the demo.</b> It visualizes the same information a Business Process Flow would, but inline at the top of the form where it's always visible. No "Process" button to click, no hidden flyout.</div>
+        </div>
+      </div>
+
+      <h3 id="step-5">Step 5 — Resolve the claim</h3>
+      <div class="click">
+        <div class="num-circle">5</div>
+        <div>
+          <p>Set the Status to <b>Triage</b>, then <b>Investigation</b>, then <b>Decision</b> — watch the Pizza Tracker advance live. (In production the Status changes will come from operator decisions or the stage-tracker flow.)</p>
+          <p>In Decision stage, click one of the modern command buttons:</p>
+          <table>
+            <tr><th>Command</th><th>Behavior</th></tr>
+            <tr><td><b>Resolve — Credit Issued</b></td><td>If credit ≤ plant threshold → confirms and closes. If credit &gt; threshold → creates an Approval Request and waits.</td></tr>
+            <tr><td><b>Resolve — Replacement Sent</b></td><td>Closes claim with Replacement resolution.</td></tr>
+            <tr><td><b>Resolve — Repair Completed</b></td><td>Closes claim with Repair resolution.</td></tr>
+            <tr><td><b>Deny Claim</b></td><td>Sets resolution to Denied + creates an Approval History entry.</td></tr>
+            <tr><td><b>Send Customer Email</b></td><td>Opens email Quick Create prefilled with customer address; logs to Email tab as Outbound.</td></tr>
+            <tr><td><b>Request Manager Approval</b></td><td>Creates an Approval Record under the assigned plant's approvers (currently admin@ placeholder).</td></tr>
+          </table>
+          <div class="show">
+            On resolve, Pizza Tracker dot 5 (<b>Closed</b>) fills green, status flips, closed-date stamps to <code>now()</code>. Total age shows the elapsed days. The kanban board now shows this card under the Closed column.
+          </div>
+          <div class="say">
+            "That's the full loop. Email in. Triage. Decide. Close. A complete cycle in well under five minutes — and every action is auditable in Dataverse."
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <h2 id="architecture">4. Architecture (1-slide explainer)</h2>
+
+    <div class="arc">
+      <pre style="background:#f7f8fb;border:1px solid var(--border);border-radius:8px;padding:14px;font-size:12px;overflow-x:auto">
+  Shared inbox (rmarequest@…)
+            │
+            ▼
+  Power Automate: RMA Email Monitor (1-min polling)
+            │
+            ├──▶  AI Builder: RMA Email Extractor  (17 fields → JSON)
+            │
+            ├──▶  Dataverse: rma_emaillog  (direction=Inbound, isProcessed=false)
+            │
+            └──▶  SharePoint list (backup channel — Phase 1 dual-write)
+
+  Operator opens "Email Inbox" in MDA → reviews → "Create RMA Claim from Email"
+
+  Quick Create → rma_claim record
+            │
+            ├──▶  Power Automate: RMA Auto-Assign Plant  (part-prefix → rma_plant)
+            ├──▶  Power Automate: RMA Stage Tracker  (sets rma_stageenteredon on status change)
+            │
+            ▼
+  Claim form (Pizza Tracker + 4 tabs)
+            │
+            ├──▶  Resolve commands (JS in rma_/scripts/hkp_rma_form_commands.js)
+            ├──▶  Approval gating (rma_plant.rma_autocreditthreshold)
+            └──▶  Email Send via Office 365 Outlook (logged to rma_emaillog Outbound)
+
+  Team lead opens kanban → sees every claim grouped by status</pre>
+    </div>
+
+    <h2 id="what-is-included">5. What's in the box (v1 inventory)</h2>
+
+    <div class="arc">
+      <h3>10 Dataverse tables in solution <code>RMAReturnsMonitor</code></h3>
+      <table>
+        <tr><th>Table</th><th>Records</th><th>Purpose</th></tr>
+        <tr><td><code>rma_claim</code></td><td>13 sample</td><td>The headline entity — the actual RMA</td></tr>
+        <tr><td><code>rma_plant</code></td><td>5</td><td>Waterbury CT · Milford NH · HLM China · Penang MY · Reynosa MX</td></tr>
+        <tr><td><code>rma_routingrule</code></td><td>5</td><td>Part-prefix → plant routing</td></tr>
+        <tr><td><code>rma_emaillog</code></td><td>varies</td><td>Inbound + Outbound email audit trail</td></tr>
+        <tr><td><code>rma_emailtemplate</code></td><td>2</td><td>Submission Confirmation · Status Update</td></tr>
+        <tr><td><code>rma_emailsignature</code></td><td>1</td><td>Default signature</td></tr>
+        <tr><td><code>rma_plantapprover</code></td><td>5</td><td>One per plant (admin@ placeholder — Bill TODO)</td></tr>
+        <tr><td><code>rma_approvalrecord</code></td><td>3 sample</td><td>$-over-threshold approval requests</td></tr>
+        <tr><td><code>rma_approvalhistory</code></td><td>0</td><td>Audit of approve/deny actions</td></tr>
+        <tr><td><code>rma_claimnote</code></td><td>6 sample</td><td>Engineer notes per claim</td></tr>
+      </table>
+
+      <h3>Forms</h3>
+      <table>
+        <tr><th>Form</th><th>Tabs / Sections</th></tr>
+        <tr><td><b>rma_claim Main</b></td><td>Pizza Tracker · General (Customer&amp;Part, Plant&amp;Status, Resolution) · Notes (subgrid+timeline) · Approvals (requests+history) · Emails (subgrid)</td></tr>
+        <tr><td><b>rma_claim Quick Create</b></td><td>Customer Name, Email, Region, Part #, Quantity, Failure Mode, Failure Description, Assigned Plant</td></tr>
+        <tr><td><b>rma_emaillog Main</b></td><td>Header: Subject·Direction·Received·Processed · General: From·To·Body · Linked Claim: claim lookup</td></tr>
+      </table>
+
+      <h3>Views (savedqueries)</h3>
+      <table>
+        <tr><th>View</th><th>Filter</th><th>Default?</th></tr>
+        <tr><td><b>Inbound — Unprocessed</b></td><td><code>rma_direction=Inbound AND rma_isprocessed=false</code></td><td>✅ DEFAULT</td></tr>
+        <tr><td><b>Inbound — Processed</b></td><td><code>rma_direction=Inbound AND rma_isprocessed=true</code></td><td></td></tr>
+        <tr><td><b>All Outbound</b></td><td><code>rma_direction=Outbound</code></td><td></td></tr>
+      </table>
+
+      <h3>Power Automate flows</h3>
+      <table>
+        <tr><th>Flow</th><th>State</th><th>What it does</th></tr>
+        <tr><td><b>RMA Email Monitor</b></td><td><span class="pill good">Active</span></td><td>Polls mailbox → AI extract → dual-write to SharePoint + Dataverse rma_emaillog</td></tr>
+        <tr><td><b>RMA Auto-Assign Plant</b></td><td><span class="pill good">Active</span></td><td>On new claim, looks up part prefix in rma_routingrule → assigns rma_assignedplant</td></tr>
+        <tr><td><b>RMA Stage Tracker</b></td><td><span class="pill good">Active</span></td><td>On claim status change, sets rma_stageenteredon = now() and resets rma_stageagedays</td></tr>
+      </table>
+
+      <h3>Web resources</h3>
+      <table>
+        <tr><th>Web resource</th><th>Purpose</th></tr>
+        <tr><td><code>rma_/pizzatracker/rma_pizza_tracker.html</code></td><td>5-step progress visual on rma_claim form</td></tr>
+        <tr><td><code>rma_/scripts/hkp_rma_form_commands.js</code></td><td>Modern-command handlers (resolve/deny/email/approval/createFromEmail)</td></tr>
+        <tr><td><code>pp_/kanban/kanban.html</code></td><td>Reusable config-driven kanban for any entity</td></tr>
+        <tr><td><code>rma_/board/claims_board.html</code></td><td>HKP wrapper that iframes pp_kanban with rma_claim params</td></tr>
+      </table>
+    </div>
+
+    <h2 id="openview-checklist">6. Operator daily checklist (post your kanban as a sticky)</h2>
+
+    <div class="arc hero3">
+      <ol style="line-height:2">
+        <li>Open <b>RMA Operations</b> app → <b>Email Inbox</b></li>
+        <li>For each Inbound — Unprocessed row, top to bottom:
+          <ol type="a">
+            <li>Click the row. Read the AI-extracted fields on the Linked Claim tab.</li>
+            <li>If it's a valid RMA request → <b>Create RMA Claim from Email</b>.</li>
+            <li>If it's spam / not an RMA → set <code>rma_isprocessed=true</code> manually and leave Linked Claim blank.</li>
+          </ol>
+        </li>
+        <li>Open the new claim. Verify the assigned plant (auto-assigned by part prefix) — override if wrong.</li>
+        <li>Move Status → <b>Triage</b>. Pizza Tracker advances. Stage Tracker flow stamps <code>rma_stageenteredon</code>.</li>
+        <li>Investigate. Add Notes. Send customer email if you need more info.</li>
+        <li>Move Status → <b>Investigation</b> → <b>Decision</b>.</li>
+        <li>Click the resolve command that matches the outcome. Approval gate triggers if credit &gt; plant threshold.</li>
+        <li>Claim closes. Next email in the queue.</li>
+      </ol>
+    </div>
+
+    <h2 id="phase2">7. Phase 2 backlog (what we're NOT doing in v1)</h2>
+
+    <div class="arc">
+      <table>
+        <tr><th>Capability</th><th>Why deferred</th></tr>
+        <tr><td><b>Real plant approver names</b></td><td>Currently admin@ placeholder × 5. Bill TODO to swap in real plant manager UPNs.</td></tr>
+        <tr><td><b>Teams adaptive cards for approvals</b></td><td>Approval Record gets created today; the Teams card flow is a P2 add-on (template ready).</td></tr>
+        <tr><td><b>Email template merge</b></td><td>Send Customer Email opens prefilled QC today. Phase 2 adds a Custom Page with template picker + signature merge.</td></tr>
+        <tr><td><b>Per-OEM tier &amp; warranty rules</b></td><td>Phase 1 routes by part prefix. Phase 2 layers in the iDEA-57 / iDEA-43 / iDEA-35 / iDEA-28 warranty term matrix + OEM Tier 1/2/3 cost caps.</td></tr>
+        <tr><td><b>Repeat-claim detection</b></td><td>Cross-OEM history query against rma_claim. Adds a "3rd RMA from Andersen in 60 days" badge to the form header.</td></tr>
+        <tr><td><b>Shipping label generation</b></td><td>SendShippingLabel flow exists in legacy <code>WarrantyandClaimOperations</code> solution; needs adapter to rma_claim.</td></tr>
+        <tr><td><b>Power Pages customer portal</b></td><td>Self-service RMA submission page (no email round-trip). Outside v1 scope.</td></tr>
+      </table>
+    </div>
+
+    <h2 id="admin">8. Admin / setup reference</h2>
+
+    <div class="arc">
+      <h3>Environment</h3>
+      <table>
+        <tr><td><b>Org URL</b></td><td><code>https://org6feab6b5.crm.dynamics.com</code> (Mfg Gold Template)</td></tr>
+        <tr><td><b>App ID</b></td><td><code>8661f960-1f4e-f111-bec6-000d3a5aed87</code></td></tr>
+        <tr><td><b>Solution</b></td><td><code>RMAReturnsMonitor</code> (publisher prefixes <code>rma_</code> and <code>pp_</code>)</td></tr>
+        <tr><td><b>App URL</b></td><td><a href="https://org6feab6b5.crm.dynamics.com/main.aspx?appid=8661f960-1f4e-f111-bec6-000d3a5aed87">Open the RMA Operations app</a></td></tr>
+        <tr><td><b>Kanban URL</b></td><td><a href="https://org6feab6b5.crm.dynamics.com/WebResources/rma_/board/claims_board.html">Open the live kanban board</a></td></tr>
+        <tr><td><b>Shared mailbox</b></td><td><code>rmarequest@D365DemoTSCE30330346.onmicrosoft.com</code></td></tr>
+      </table>
+
+      <h3>How to publish a customization change</h3>
+      <div class="copyable">
+        <strong>RUN:</strong><br>
+<code>pac auth select --name mfg-gold
+pac solution publish</code>
+      </div>
+      <p class="callout warn">
+        <b>Do NOT use the REST <code>PublishXml</code> action.</b> The <code>AppCopilotFeatures</code>
+        managed plugin stalls those calls in this tenant. pac CLI bypasses the queue.
+      </p>
+
+      <h3>How to add a new plant</h3>
+      <ol>
+        <li>Open the <b>Plants</b> table in the app sitemap → New</li>
+        <li>Set Name, Region, Part Prefixes (comma-separated), Auto-credit Threshold</li>
+        <li>Add a Plant Approver (rma_plantapprover) record linked to the new plant</li>
+        <li>Add Routing Rule entries linking part prefixes to the new plant</li>
+        <li>Done — auto-assign flow uses these immediately</li>
+      </ol>
+
+      <h3>How to test the email pipeline</h3>
+      <ol>
+        <li>Send an email to <code>rmarequest@D365DemoTSCE30330346.onmicrosoft.com</code></li>
+        <li>Wait up to 1 minute (the flow polls every 60 seconds)</li>
+        <li>Open the app → Email Inbox → the new row appears at the top of Inbound — Unprocessed</li>
+        <li>If nothing appears: check <a href="https://make.powerautomate.com">Power Automate run history</a> for "RMA Email Monitor"</li>
+      </ol>
+    </div>
+
+    <div class="callout good" style="margin:32px 0 0">
+      <b>Demo guide v1.0 · prepared by the Mfg CoE for AMETEK HKP review</b><br>
+      Source: <code>customers/ametek/hkp_rma/</code> · Maintainer: Bill Whalen (Microsoft SE, Discrete Mfg)
+    </div>
+
+  </main>
+
+  <aside class="right">
+    <h3>Live URLs</h3>
+    <div class="card">
+      <h4>RMA Operations app</h4>
+      <p><a href="https://org6feab6b5.crm.dynamics.com/main.aspx?appid=8661f960-1f4e-f111-bec6-000d3a5aed87">Open ↗</a></p>
+    </div>
+    <div class="card">
+      <h4>Kanban board</h4>
+      <p><a href="https://org6feab6b5.crm.dynamics.com/WebResources/rma_/board/claims_board.html">Open ↗</a></p>
+      <p style="font-size:11px">Embeddable for SharePoint / Teams.</p>
+    </div>
+    <div class="card">
+      <h4>Pizza Tracker</h4>
+      <p><a href="https://org6feab6b5.crm.dynamics.com/WebResources/rma_/pizzatracker/rma_pizza_tracker.html">Preview ↗</a></p>
+      <p style="font-size:11px">Lives at top of every rma_claim form.</p>
+    </div>
+
+    <h3>Status pills</h3>
+    <div class="card">
+      <span class="pill info">New</span>
+      <span class="pill warn">Triage</span>
+      <span class="pill bad">Investigation</span>
+      <span class="pill warn">Decision</span>
+      <span class="pill good">Closed</span>
+    </div>
+
+    <h3>Quick stats</h3>
+    <div class="card">
+      <h4>13</h4>
+      <p>Sample claims in the env</p>
+    </div>
+    <div class="card">
+      <h4>5</h4>
+      <p>Plants &amp; approvers seeded</p>
+    </div>
+    <div class="card">
+      <h4>4 + 1</h4>
+      <p>Form tabs + Pizza Tracker header</p>
+    </div>
+    <div class="card">
+      <h4>3</h4>
+      <p>Active Power Automate flows</p>
+    </div>
+
+    <h3>Bill TODO before customer demo</h3>
+    <div class="card">
+      <p>• Wire 6 modern command buttons on rma_claim form ribbon (~10 min in Power Apps command bar designer)</p>
+      <p>• Wire "Create RMA Claim from Email" command on rma_emaillog form (~5 min)</p>
+      <p>• Swap 5 placeholder plant approver names for real plant managers</p>
+      <p>• Send 1 test email to verify Email Monitor dual-write</p>
+    </div>
+
+    <h3>For developers</h3>
+    <div class="card">
+      <p>JS namespace: <code>HKPCommands.*</code></p>
+      <p>Web resource: <code>rma_/scripts/hkp_rma_form_commands.js</code></p>
+      <p>Form lib registered on both rma_claim Main + rma_emaillog Main.</p>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+// Copy-button injector
+document.querySelectorAll(".copyable").forEach(function (el) {
+  if (el.querySelector(".copy-btn")) return;
+  var btn = document.createElement("button");
+  btn.className = "copy-btn";
+  btn.textContent = "📋 Copy";
+  btn.onclick = function () {
+    var code = el.querySelector("code");
+    if (!code) return;
+    navigator.clipboard.writeText(code.textContent).then(function () {
+      btn.textContent = "✅ Copied!";
+      btn.classList.add("copied");
+      setTimeout(function () { btn.textContent = "📋 Copy"; btn.classList.remove("copied"); }, 2000);
+    });
+  };
+  el.appendChild(btn);
+});
+</script>
+
+</body>
+</html>

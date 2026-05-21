@@ -1,0 +1,455 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="x-ua-compatible" content="ie=edge" />
+<title>RMA Operations — Help</title>
+<style>
+  :root { --accent: #0067b8; --accent-soft: #eaf3fb; --border: #e6e6e6; --muted: #666; --bg: #fafafa; --text: #1f1f1f; }
+  html, body { margin: 0; padding: 0; height: 100%; background: var(--bg); font-family: 'Segoe UI', system-ui, sans-serif; color: var(--text); font-size: 14px; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 28px 36px 60px; }
+  header { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+  header .icon { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, var(--accent), #2884c8); display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; font-weight: 600; }
+  header h1 { margin: 0; font-size: 22px; font-weight: 600; }
+  header .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .ver-pill { display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 999px; background: #dff3e7; color: #166534; font-size: 11px; font-weight: 700; letter-spacing: .02em; vertical-align: middle; }
+  .toc { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; margin: 22px 0 26px; display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; }
+  .toc a { color: var(--accent); text-decoration: none; padding: 4px 10px; border-radius: 4px; }
+  .toc a:hover { background: var(--accent-soft); }
+  section.card { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 22px 26px; margin-bottom: 18px; }
+  section.card h2 { margin: 0 0 12px 0; font-size: 16px; color: var(--accent); border-bottom: 2px solid var(--accent-soft); padding-bottom: 6px; }
+  ol, ul { margin: 8px 0 4px 22px; padding: 0; }
+  li { margin: 5px 0; line-height: 1.5; }
+  code { background: #f4f4f4; padding: 1px 6px; border-radius: 3px; font-family: 'Cascadia Code', Consolas, monospace; font-size: 12.5px; color: #c7254e; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--accent-soft); color: var(--accent); margin-right: 6px; }
+  .grid { display: grid; grid-template-columns: 220px 1fr; gap: 8px 16px; align-items: start; }
+  .grid b { color: #444; font-weight: 600; padding-top: 1px; }
+  .tip { background: #fffbe6; border-left: 4px solid #f5c518; padding: 10px 14px; margin: 10px 0; border-radius: 0 6px 6px 0; font-size: 13px; }
+  .warn { background: #fff5f5; border-left: 4px solid #d23; padding: 10px 14px; margin: 10px 0; border-radius: 0 6px 6px 0; font-size: 13px; }
+  footer { margin-top: 30px; color: var(--muted); font-size: 12px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="icon">?</div>
+    <div>
+      <h1>RMA Operations — Help &amp; Cheat Sheet <span class="ver-pill">v5 - 5/20</span></h1>
+      <div class="sub">Quick reference for everyday tasks + full admin reference for the Settings tables. Last updated 2026-05-20.</div>
+    </div>
+  </header>
+
+  <div class="toc">
+    <span style="color:var(--muted);font-weight:600">Jump to:</span>
+    <a href="#setup">First setup</a>
+    <a href="#new">File a new claim</a>
+    <a href="#email">Process inbound email</a>
+    <a href="#actions">Use claim actions</a>
+    <a href="#scoring">Read Smart Insights</a>
+    <a href="#approve">Request approval</a>
+    <a href="#status">Move a claim through stages</a>
+    <a href="#search">Find prior claims</a>
+    <a href="#views">Saved views</a>
+    <a href="#settings">Settings</a>
+    <a href="#trouble">Troubleshooting</a>
+    <a href="#dev">Architecture (devs)</a>
+    <a href="#resolve">Resolution &amp; ERP</a>
+  </div>
+
+  <section id="setup" class="card">
+    <h2>1. First setup</h2>
+    <ol>
+      <li>Open the <b>Configuration</b> group in the left nav and walk the 5 tables in order: <b>Plants</b> &rarr; <b>Routing Rules</b> &rarr; <b>Plant Approvers</b> &rarr; <b>Email Templates</b> &rarr; <b>Email Signatures</b>. Each one builds on the prior, so do them in order on first setup.</li>
+      <li><b>Plants:</b> create one row per manufacturing location. Set <i>Region</i>, <i>Part Prefixes</i> (comma-separated, e.g. <code>HKP-,SAN-</code>), <i>Product Lines</i>, and <i>Auto Credit Threshold</i> (the dollar value below which the system auto-approves with no manager).</li>
+      <li><b>Routing Rules:</b> tell the system which plant a claim should go to. Pick a <i>Rule Type</i> (Part Prefix / Customer Region / Product Line), enter the <i>Match Value</i>, pick the <i>Assigned Plant</i>, and set a <i>Priority</i> (lower = wins).</li>
+      <li><b>Plant Approvers:</b> for each plant, add the people who get the Teams approval card. Use <i>Notify When</i> = <code>All Claims</code> for everyday reviewers (plant manager) and <code>High Value Only</code> + a <i>High Value Threshold</i> (e.g. $5,000) for VP-level escalation. Set <i>Teams UPN</i> to the user's Microsoft 365 sign-in.</li>
+      <li><b>Email Templates:</b> author reusable customer reply content. Mark each template with a <i>Type</i> (Submission Confirmation, Status Update, Approval, Denial, Custom) and toggle <i>Active</i>. Templates surface on the claim form's reply buttons.</li>
+      <li><b>Email Signatures:</b> create one row per signer; mark exactly one as <i>Is Default</i>. The default signature is auto-appended to every outbound reply.</li>
+      <li>Once Configuration is done, open <b>Email Inbox</b> to triage inbound messages and use <b>Email Records</b> under <b>History</b> for audit/search.</li>
+    </ol>
+    <div class="tip"><b>Tip:</b> Both the Main forms and the Quick Create panels for the Configuration tables now show inline help text in the section header explaining what each table does.</div>
+    <div class="warn"><b>Known gap (5/20):</b> The current <i>Request Manager Approval</i> flow notifies <b>all</b> active approvers for a plant. The <i>Notify When</i> + <i>High Value Threshold</i> fields are honored in the form but not yet in the flow filter — coming next.</div>
+  </section>
+
+  <section id="new" class="card">
+    <h2>2. File a new claim</h2>
+    <ol>
+      <li>Click the global <b>+ New</b> button (top toolbar) → <b>RMA Claim</b>.</li>
+      <li>Fill the Quick Create form: customer, part number, quantity, failure mode.</li>
+      <li>Click <b>Save and Close</b> — a claim number (RMA-…) is auto-assigned.</li>
+      <li>The auto-assignment flow picks a plant based on part-number prefix.</li>
+    </ol>
+    <div class="tip"><b>Tip:</b> If the suggested plant is wrong, change <b>Assigned Plant</b> on the form. The flow re-evaluates routing rules whenever the part number or region changes.</div>
+  </section>
+
+  <section id="email" class="card">
+    <h2>3. Process inbound email</h2>
+    <ol>
+      <li>Open <b>Email Inbox</b> from the left nav for the full-page triage experience.</li>
+      <li>Review the email content and extracted details, then open or create the related claim.</li>
+      <li>Use the Email Assist experience to draft or send customer replies when needed.</li>
+      <li>Once processed, the message is tracked in <b>Email Records</b> under <b>History</b> for audit/search.</li>
+      <li>Open an individual email log record if you need the side pane and full activity details.</li>
+    </ol>
+    <div class="tip"><b>Tip:</b> The email scraper deduplicates on Message ID, so re-running ingestion should not create duplicates.</div>
+  </section>
+
+  <section id="actions" class="card">
+    <h2>4. Use claim actions from the Pizza Tracker</h2>
+    <ol>
+      <li>Open any claim and look at the Pizza Tracker at the top of the form.</li>
+      <li>Use the inline action buttons there for the most common tasks instead of relying on the top command bar.</li>
+      <li><b>Submission Confirmation</b> sends the customer acknowledgement template.</li>
+      <li><b>Status Update</b> sends the current-status template using the claim/customer context.</li>
+      <li><b>Resolve</b>, <b>Deny</b>, and <b>Request Approval</b> actions are also available inline for faster claim handling.</li>
+    </ol>
+    <div class="tip"><b>Tip:</b> The current template merge supports first-name style greetings for customer-facing messages, so you should no longer see the full name dropped into greeting-only spots.</div>
+  </section>
+
+  <section id="scoring" class="card">
+    <h2>5. Read the Smart Insights panel</h2>
+    <p>The Smart Insights panel (right side of the claim form) summarizes what the system thinks about the claim:</p>
+    <div class="grid">
+      <b>Customer Health</b><span>0–100 score, derived from prior-claim volume, denial rate, average resolution time</span>
+      <b>Part Risk</b><span>0–100 score, derived from defect rate across all customers and warranty period</span>
+      <b>Recommendation</b><span><span class="pill" style="background:#e6f7ec;color:#1b6f3a">Auto-Approve</span> / <span class="pill" style="background:#fff3e0;color:#8a5a00">Investigate</span> / <span class="pill" style="background:#fff5f5;color:#b00020">Escalate</span></span>
+      <b>Customer History</b><span>Top 5 prior claims for the same customer — click any to open</span>
+    </div>
+    <div class="tip"><b>Note:</b> The Navision integration is currently stubbed (deterministic fake) and will be replaced with the live ERP feed. Behavior + UI won't change.</div>
+  </section>
+
+  <section id="approve" class="card">
+    <h2>6. Request manager approval</h2>
+    <ol>
+      <li>Open the claim, fill in the <b>Credit Amount</b> (or other resolution amount).</li>
+      <li>Click <b>Request Manager Approval</b> on the Pizza Tracker (or move status to <b>Decision</b>). The <b>RMA: Request Manager Approval for Claim</b> flow fires.</li>
+      <li>The flow looks up all active Plant Approvers for the claim's assigned plant and sends each one an Adaptive Card in Teams.</li>
+      <li>The first approver to click <b>Approve</b> or <b>Deny</b> wins — the claim's <i>Status</i> and <i>Resolution</i> are updated automatically, a row is written to <b>Approval History</b>, and a customer email is sent if the matching template is active.</li>
+    </ol>
+    <p><b>Two-tier approval model</b> (configured per approver in <b>Plant Approvers</b>):</p>
+    <div class="grid">
+      <b>Notify When = All Claims</b><span>Approver gets every claim for their plant. Typical for the day-to-day plant manager.</span>
+      <b>Notify When = High Value Only</b><span>Approver only gets the card when the claim's resolution amount is &ge; their <i>High Value Threshold</i>. Typical for VP-level escalation (e.g. $10,000+).</span>
+      <b>Notify When = Manual Only</b><span>Approver never gets auto-notified; included only when explicitly added by another approver.</span>
+    </div>
+    <div class="warn"><b>Known gap (5/20):</b> The current flow ignores <i>Notify When</i> and <i>High Value Threshold</i> and notifies all active approvers for the plant. Dollar-tier filtering is the next planned flow update. Until then, model the tiers but expect everyone to be pinged.</div>
+    <div class="tip"><b>Auto-approve below threshold:</b> If the resolution amount is below the plant's <i>Auto Credit Threshold</i>, the claim auto-approves with no manager card sent.</div>
+  </section>
+
+  <section id="status" class="card">
+    <h2>7. Move a claim through stages</h2>
+    <p>The claim status drives the Pizza Tracker visualizer at the top of the form. Allowed stages:</p>
+    <ul>
+      <li><b>New</b> — just filed; auto-assignment is still running</li>
+      <li><b>Triage</b> — owner reviewing; deciding investigation path</li>
+      <li><b>Investigation</b> — engineering / quality looking at part</li>
+      <li><b>Decision</b> — approver review; resolution amount set</li>
+      <li><b>Closed</b> — final disposition recorded; customer notified</li>
+    </ul>
+    <p>To advance the stage: edit <b>Status</b> in the form header. The Pizza Tracker should refresh to match the saved stage, and the "stage age" pill turns red after 7 days in the same stage.</p>
+  </section>
+
+  <section id="search" class="card">
+    <h2>8. Find prior claims for a customer or part</h2>
+    <p>Three ways:</p>
+    <ol>
+      <li><b>Quick Find</b> on the RMA Claims grid (top-right magnifier) searches across customer, part, and claim number.</li>
+      <li>The <b>Smart Insights</b> panel on any open claim shows the top 5 prior claims for that customer.</li>
+      <li><b>Claims Board</b> dashboard supports inline filter by part number prefix.</li>
+    </ol>
+  </section>
+
+  <section id="views" class="card">
+    <h2>9. Saved views to know</h2>
+    <ul>
+      <li><b>Active Claims</b> — default open queue</li>
+      <li><b>Awaiting My Action</b> — assigned to you, in Triage or Decision</li>
+      <li><b>Stuck (>7 days)</b> — anything that hasn't moved a stage in a week</li>
+      <li><b>By Plant</b> — grouped by Assigned Plant</li>
+      <li><b>By Status</b> — grouped by stage</li>
+      <li><b>By Customer Region</b> — grouped by region</li>
+      <li><b>High-Value</b> — credit amount > $5,000</li>
+      <li><b>Closed This Week</b></li>
+      <li><b>Closed This Month</b></li>
+    </ul>
+  </section>
+
+  <section id="settings" class="card">
+    <h2>10. Configuration tables — full field reference</h2>
+    <p>All five tables live in the sitemap under <b>Configuration</b>. Below is every field you'll see on each Main form / Quick Create panel and what it controls.</p>
+
+    <h3 style="margin-top:18px;color:#444;font-size:14px">Plants <span class="pill">5 default rows seeded</span></h3>
+    <p>One row per manufacturing location. Drives plant assignment + auto-approval thresholds.</p>
+    <div class="grid">
+      <b>Plant Name</b><span>Display name, e.g. <code>HLM-China</code> or <code>HKP-Sanford</code></span>
+      <b>Region</b><span>NA / EMEA / APAC / LATAM. Used by region-based routing rules.</span>
+      <b>Part Prefixes</b><span>Comma-separated prefixes the plant manufactures, e.g. <code>HKP-,SAN-</code>. Used by Part Prefix routing rules.</span>
+      <b>Product Lines</b><span>Comma-separated product lines, e.g. <code>Pumps,Compressors</code>. Used by Product Line routing rules.</span>
+      <b>Auto Credit Threshold</b><span>Dollar value below which the system auto-approves credits with no manager card. Above this, the Request Manager Approval flow fires.</span>
+    </div>
+
+    <h3 style="margin-top:22px;color:#444;font-size:14px">Routing Rules</h3>
+    <p>Tells the system which plant a new claim should be assigned to. Multiple rules evaluate in priority order; first match wins.</p>
+    <div class="grid">
+      <b>Rule Name</b><span>Human label, e.g. <i>HKP parts &rarr; Sanford</i></span>
+      <b>Rule Type</b><span><code>Part Prefix</code> (match part number prefix) / <code>Customer Region</code> (NA/EMEA/etc.) / <code>Product Line</code></span>
+      <b>Match Value</b><span>The literal string to match. Examples: <code>HKP-</code> for Part Prefix, <code>EMEA</code> for Region, <code>Pumps</code> for Product Line. Case-insensitive prefix match.</span>
+      <b>Priority</b><span>Tiebreaker when multiple rules match. <b>Lower</b> wins. Convention: 10/20/30 for primary rules, 90/99 for fallbacks.</span>
+      <b>Assigned Plant</b><span>The plant that gets the claim when this rule matches.</span>
+      <b>Is Active</b><span>Toggle to disable a rule without deleting it. Inactive rules are skipped.</span>
+    </div>
+    <div class="tip"><b>Example rule set:</b><br>
+      &bull; <i>HKP parts to Sanford</i> — Part Prefix / <code>HKP-</code> / Priority 10 / HKP-Sanford<br>
+      &bull; <i>SAN parts to Mexico</i> — Part Prefix / <code>SAN-</code> / Priority 10 / HLM-Mexico<br>
+      &bull; <i>EMEA fallback</i> — Customer Region / <code>EMEA</code> / Priority 50 / HLM-Italy<br>
+      &bull; <i>China overflow</i> — Customer Region / <code>CN</code> / Priority 50 / HLM-China
+    </div>
+
+    <h3 style="margin-top:22px;color:#444;font-size:14px">Plant Approvers</h3>
+    <p>Who gets the Teams approval card for a claim. Multiple approvers per plant supported; tier them with <i>Notify When</i> + <i>High Value Threshold</i>.</p>
+    <div class="grid">
+      <b>Approver Name</b><span>Display name of the person, e.g. <i>Jane Smith</i></span>
+      <b>Plant</b><span>Which plant this person approves for.</span>
+      <b>Role / Title</b><span>Free text, e.g. <i>Plant Manager</i>, <i>VP Operations</i>, <i>President</i>.</span>
+      <b>Email</b><span>The approver's email address.</span>
+      <b>Teams UPN</b><span>Microsoft 365 sign-in (e.g. <code>jane.smith@ametek.com</code>). This is who Teams routes the Adaptive Card to. If missing, the flow falls back to <code>admin@</code>.</span>
+      <b>Assignment Mode</b><span><code>Direct</code> (always go to this person) / <code>Manager Chain</code> (escalate via M365 manager) / <code>Round Robin</code> (rotate among same-tier approvers).</span>
+      <b>Notify When</b><span><code>All Claims</code> / <code>High Value Only</code> / <code>Manual Only</code> — see <a href="#approve">section 6</a> for the model.</span>
+      <b>High Value Threshold</b><span>Dollar floor for <code>High Value Only</code> approvers. Approver gets pinged only when the claim's resolution amount is &ge; this number.</span>
+      <b>Is Active</b><span>Toggle to skip an approver without deleting them.</span>
+    </div>
+
+    <h3 style="margin-top:22px;color:#444;font-size:14px">Email Templates</h3>
+    <p>Reusable customer reply content. Templates surface as buttons on the claim form's Pizza Tracker.</p>
+    <div class="grid">
+      <b>Template Name</b><span>Display name, e.g. <i>Submission Confirmation</i>.</span>
+      <b>Subject</b><span>Email subject line. Supports placeholders like <code>{customer_name}</code>, <code>{claim_number}</code>, <code>{first_name}</code>.</span>
+      <b>Body</b><span>HTML email body. Same placeholders as Subject.</span>
+      <b>Type</b><span><code>Submission Confirmation</code> / <code>Status Update</code> / <code>Approval</code> / <code>Denial</code> / <code>Custom</code>. Drives which button on the claim form sends this template.</span>
+      <b>Active</b><span>Inactive templates are hidden from the claim form buttons.</span>
+      <b>Trigger Status</b><span>(Optional) Auto-send this template when the claim status changes to this value.</span>
+      <b>Trigger Resolution</b><span>(Optional) Auto-send this template when the claim resolution is set to this value (e.g. <code>Claim Approved</code> &rarr; sends the Approval template).</span>
+    </div>
+    <div class="tip"><b>Placeholders supported in Subject + Body:</b> <code>{customer_name}</code>, <code>{first_name}</code>, <code>{last_name}</code>, <code>{claim_number}</code>, <code>{part_number}</code>, <code>{part_description}</code>, <code>{quantity}</code>, <code>{plant_name}</code>, <code>{claim_status}</code>, <code>{resolution}</code>, <code>{credit_amount}</code>, <code>{owner_name}</code>, <code>{signature}</code></div>
+
+    <h3 style="margin-top:22px;color:#444;font-size:14px">Email Signatures</h3>
+    <p>One signature per signer. Whichever is marked default is auto-appended to all outbound replies.</p>
+    <div class="grid">
+      <b>Signature Name</b><span>Internal label for this signature, e.g. <i>Bill Whalen — RMA Lead</i>.</span>
+      <b>Signer Name</b><span>Name that appears in the email signature block.</span>
+      <b>Title</b><span>Job title, e.g. <i>RMA Operations Lead</i>.</span>
+      <b>Phone</b><span>Direct phone for the signature block.</span>
+      <b>Email</b><span>Reply-to email address shown in the signature.</span>
+      <b>Image URL</b><span>(Optional) URL of a logo or headshot to embed in the signature.</span>
+      <b>Is Default</b><span>Mark exactly one signature as default. It's used whenever the <code>{signature}</code> placeholder appears in an email template.</span>
+    </div>
+  </section>
+
+  <section id="trouble" class="card">
+    <h2>11. Troubleshooting</h2>
+    <div class="grid">
+      <b>Smart Insights doesn't render</b><span>Hard refresh (Ctrl+F5). If still blank, check that <code>rma_/board/smart_insights.html</code> web resource is published.</span>
+      <b>New email not appearing</b><span>Check <b>RMA Email Monitor</b> flow run history in Power Automate and confirm the message was ingested into Email Inbox / Email Records.</span>
+      <b>Approval card not delivered to Teams</b><span>Check Plant Approver record — must point at a real Teams user, not an empty field.</span>
+      <b>Pizza Tracker shows wrong stage</b><span>The web resource reads <code>rma_status</code> directly. Save the form, then refresh.</span>
+      <b>Help page looks stale</b><span>Hard refresh (Ctrl+F5) or open Help in an InPrivate window. Web resource caching can hold onto an older version briefly.</span>
+      <b>Quick Create not visible on + New menu</b><span>Browser may be caching. Sign out and back in, or wait ~5 min.</span>
+    </div>
+  </section>
+
+  <section id="dev" class="card">
+    <h2>12. Architecture &amp; extension points (developers)</h2>
+    <p style="color:var(--muted);margin-top:-6px">A map of every moving part so a developer can find what to change and where the source lives. All paths are relative to <code>customers/ametek/hkp_rma/</code> in the <code>billwhalenmsft/CommunityRAPP-BillWhalen</code> repo.</p>
+
+    <h3 style="margin-top:18px">12.1 System layers</h3>
+<pre style="background:#0d1117;color:#e6edf3;padding:14px;border-radius:8px;font-size:12px;line-height:1.5;overflow-x:auto">
+┌──────────────────────────────────────────────────────────────────────┐
+│  Model-driven App: RMA Returns Monitor (appmodule)                   │
+│  ├─ Sitemap groups: Work / Configuration / Help                      │
+│  └─ Custom Pages + HTML web resources (Pizza Tracker, Smart Insights,│
+│     Email Inbox, Help, Dashboard)                                    │
+└─────────────┬────────────────────────────────────────────────────────┘
+              │ form ribbons + JS web resources
+              ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│  Dataverse tables (solution: RMAReturnsMonitor)                      │
+│  Core:    rma_claim · rma_approvalrecord · rma_approvalhistory       │
+│           rma_emaillog · rma_emailinbox                              │
+│  Config:  rma_plant · rma_routingrule · rma_plantapprover            │
+│           rma_emailtemplate · rma_emailsignature                     │
+└─────────────┬────────────────────────────────────────────────────────┘
+              │ Dataverse triggers (row added / updated)
+              ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│  Power Automate flows                                                │
+│  • RMA Email Monitor          (ingest mailbox → rma_emailinbox)      │
+│  • Auto-classify Email        (sets rma_classification + suggested   │
+│                                rma_plant via routing rules)          │
+│  • Request Manager Approval   (rma_approvalrecord added → Teams card)│
+│  • Process Approval Decision  (approve/deny → claim status + history)│
+│  • Send Templated Email       (claim status change → templated email)│
+└──────────────────────────────────────────────────────────────────────┘
+</pre>
+
+    <h3 style="margin-top:22px">12.2 Dataverse schema — what to edit when</h3>
+    <div class="grid">
+      <b>Add a column to a core table</b><span>Edit <code>scripts/create_rma_returns_monitor_tables.ps1</code> (or <code>create_rma_optional_tables.ps1</code> for config tables). Add an <code>Add-Column</code> / <code>Add-Col</code> call. Re-run script — idempotent (skips columns that exist).</span>
+      <b>Add a new picklist option</b><span>Find the <code>P-Picklist</code> definition in the create script. Append the new label to the array, then run <code>scripts/add_picklist_option.ps1</code> with the table + column + label (publishes solution after).</span>
+      <b>Add a new lookup relationship</b><span>Use <code>Add-Lookup</code> in the create script. After running, register a sub-grid on the parent form via <code>scripts/update_config_table_forms.ps1</code> (clone its <code>New-Row</code> pattern).</span>
+      <b>Surface a new column on a form</b><span>Edit <code>scripts/update_config_table_forms.ps1</code>. Add an <code>$rows += New-Row -Field 'rma_yournewfield' -Classid $TXT</code> call inside the right table block, then re-run. The marker pair <code>&lt;!--CFG-FORM-BEGIN--&gt; / &lt;!--CFG-FORM-END--&gt;</code> makes it idempotent — old rows are replaced.</span>
+      <b>Set a field tooltip / description</b><span>Edit <code>scripts/enhance_routing_rule_ux.ps1</code> (copy the <code>Set-AttrDescription</code> pattern). Uses GET → modify Description → PUT with <code>MSCRM.MergeLabels:true</code>. Re-run to apply.</span>
+    </div>
+
+    <h3 style="margin-top:22px">12.3 Power Automate flows — design + how to modify</h3>
+    <p style="color:var(--muted);margin-top:-6px">All flows live in the <b>RMAReturnsMonitor</b> solution. Each is deployed by a clone-script that POSTs a fully-formed <code>clientdata</code> JSON to <code>/api/data/v9.2/workflows</code>, then activates the workflow. <b>After re-running any clone script you MUST open the flow in the modern designer and click Save once</b> — that single action registers the Dataverse trigger webhook (programmatic POST does not).</p>
+
+    <div class="grid">
+      <b>Request Manager Approval for Claim</b><span><b>Trigger:</b> rma_approvalrecord row added. <b>Actions:</b> Get parent rma_claim → list active plant approvers for that plant honoring <code>rma_notifywhen</code> + <code>rma_highvaluethreshold</code> → send Teams Approval card → on approve: set approval Approved + close claim + write history; on deny: set approval Denied + leave at Decision + write history. <b>Source:</b> <code>scripts/clone_request_manager_approval_for_rma.ps1</code>. <b>Modify the approver filter:</b> edit the <code>List_active_plant_approvers</code> action's <code>$filter</code> expression in the clone script.</span>
+      <b>RMA Email Monitor</b><span><b>Trigger:</b> shared mailbox new email. <b>Actions:</b> upsert into <code>rma_emailinbox</code>, attach blobs, link to existing claim if subject matches a claim number. <b>Source:</b> deployed manually via solution import — see <code>solution/</code> folder.</span>
+      <b>Auto-classify Email</b><span><b>Trigger:</b> rma_emailinbox row added. <b>Actions:</b> call AI Builder model to extract claim type + plant hint, then walk <code>rma_routingrule</code> rows in priority order to set <code>rma_classification</code> + suggested <code>rma_plant</code>.</span>
+      <b>Process Approval Decision</b><span><b>Trigger:</b> rma_approvalrecord <code>rma_approvalstatus</code> changes to Approved or Denied (covers Teams approvals AND manual override from the Pizza Tracker). <b>Actions:</b> update parent rma_claim, append rma_approvalhistory row.</span>
+      <b>Send Templated Email</b><span><b>Trigger:</b> rma_claim <code>rma_status</code> changes. <b>Actions:</b> look up matching <code>rma_emailtemplate</code> by status transition, substitute placeholders ({customer_name}, {claim_number}, {signature}, etc.) using the customer's email + the default <code>rma_emailsignature</code>, send via Office 365 connector.</span>
+    </div>
+
+    <div class="tip" style="margin-top:12px"><b>Gotchas (codified in CLAUDE.md + user memory):</b><br>
+      • Trigger webhook is registered by the maker UI on first Save — never by REST POST alone.<br>
+      • If you change a flow's response schema, the bound topic / caller's binding cache is stale — delete + re-add the calling action (cannot be fixed via REST).<br>
+      • Connection references must already exist in the env. New flows reuse <code>cr74e_sharedapprovals_453c9</code> and the shared CDS connection ref.
+    </div>
+
+    <h3 style="margin-top:22px">12.4 Custom UI — web resources + form scripts</h3>
+    <p style="color:var(--muted);margin-top:-6px">Each user-facing UI block is a static HTML/JS web resource uploaded to Dataverse and rendered inside an iframe on a form or sub-area. Source files live in <code>ui/</code> and <code>d365/</code>; deploy scripts in <code>scripts/</code>. <b>Modify → run deploy script → publish</b> is the loop.</p>
+
+    <div class="grid">
+      <b>Pizza Tracker (claim stages + action buttons)</b><span><b>Source:</b> <code>ui/rma_pizza_tracker.html</code>. <b>Deployed by:</b> <code>scripts/deploy_tracker_v08.ps1</code> (latest). <b>Embedded in:</b> rma_claim Main form, top banner. <b>Reads:</b> <code>rma_status</code>, <code>rma_approvalrecord</code> children, parent context via <code>parent.Xrm</code>. <b>Modify a stage:</b> edit the <code>STAGES</code> array. <b>Modify a button action:</b> edit the per-button handler in the same file; for backend side-effects, edit the matching flow.</span>
+      <b>Smart Insights (scoring panel)</b><span><b>Source:</b> <code>ui/rma_smart_insights.html</code> (and <code>ui/board/smart_insights.html</code> for the dashboard tile). <b>Embedded in:</b> rma_claim Main form, right pane. <b>Reads:</b> rma_claim row + related claims via Web API. <b>Modify scoring weights:</b> edit the <code>WEIGHTS</code> object near the top of the file.</span>
+      <b>Claims Dashboard</b><span><b>Source:</b> <code>ui/rma_claims_dashboard.html</code>. <b>Embedded in:</b> Dashboard sub-area in sitemap. <b>Reads:</b> aggregate counts via FetchXML. <b>Modify tiles:</b> edit the <code>TILES</code> array; each tile has a label, FetchXML, and color.</span>
+      <b>Email Inbox UI</b><span><b>Source:</b> <code>ui/rma_email_inbox.html</code>. <b>Sub-area:</b> Work group. <b>Reads:</b> rma_emailinbox rows; writes back classification + plant assignment.</span>
+      <b>Help &amp; Cheat Sheet (this page)</b><span><b>Source:</b> <code>ui/rma_help.html</code>. <b>Deployed by:</b> <code>scripts/deploy_help_subarea.ps1</code> (uploads web resource + publishes + ensures sitemap sub-area exists). <b>Sub-area:</b> Help group. <b>Bump the version pill in the header</b> when shipping changes so users know they have the latest.</span>
+      <b>Form ribbon commands (Approve, Deny, Issue Credit, etc.)</b><span><b>Source:</b> <code>d365/hkp_rma_form_commands.js</code>. <b>Deployed by:</b> <code>scripts/deploy_form_commands.ps1</code>. <b>Wired up via:</b> Command Bar customizations on the rma_claim form. <b>Modify a button:</b> edit the corresponding function (e.g. <code>createApprovalRecord</code>), then re-run the deploy script.</span>
+    </div>
+
+    <h3 style="margin-top:22px">12.5 Forms — main + quick create</h3>
+    <p style="color:var(--muted);margin-top:-6px">All form patches are <b>programmatic XML splices</b> (not maker-UI clicks) so they're reproducible and diffable.</p>
+    <div class="grid">
+      <b>Config-table forms (Plant / Routing Rule / Plant Approver / Email Signature / Email Template)</b><span><b>Source:</b> <code>scripts/update_config_table_forms.ps1</code>. Uses <code>New-Row</code> helper + classid constants (<code>$TXT $MEMO $PICK $BOOL $INT $MONEY $DT $LOOK</code>) to splice rows between marker comments. Idempotent.</span>
+      <b>Quick Create constraints (system-enforced, returns 400 if violated)</b><span>Maximum 1 tab per QC form. Each section <code>columns="1"</code>. For multi-column layout, use multiple page-columns inside the single tab, each holding a 1-column section. See <code>create_rma_claim_quickcreate_form.ps1</code> for the working template.</span>
+      <b>Form section banner / help text</b><span>Flip <code>showlabel="false"</code> → <code>"true"</code> on the section, then replace its <code>&lt;label description="General"&gt;</code> with the help copy. See <code>scripts/add_routing_main_banner.ps1</code>.</span>
+      <b>PATCH dance</b><span>GET formxml → string-splice → PATCH back with both <code>formxml</code> AND <code>formjson=null</code> (formjson MUST be nulled or Dataverse ignores your change) → call <code>PublishXml</code> for the form's <code>systemform</code> ID.</span>
+    </div>
+
+    <h3 style="margin-top:22px">12.6 Where to make a change — quick map</h3>
+    <div class="grid">
+      <b>Add/edit a claim status</b><span>1) <code>scripts/create_rma_returns_monitor_tables.ps1</code> — add picklist option. 2) <code>ui/rma_pizza_tracker.html</code> — add to STAGES. 3) Optional: matching template in <code>rma_emailtemplate</code>.</span>
+      <b>Change who gets approval Teams cards</b><span>Edit <code>rma_plantapprover</code> rows in the app (Plant + Notify When + High Value Threshold). No code change.</span>
+      <b>Change the approval-routing logic itself</b><span><code>scripts/clone_request_manager_approval_for_rma.ps1</code> — modify the <code>List_active_plant_approvers</code> <code>$filter</code>, re-run with <code>-Force</code>, then open in modern designer + Save.</span>
+      <b>Change email auto-classification rules</b><span>Edit rows in <code>rma_routingrule</code> (Match Value + Priority). For logic changes: the <b>Auto-classify Email</b> flow.</span>
+      <b>Change a placeholder in templates</b><span>Edit the substitution map in the <b>Send Templated Email</b> flow's <code>Compose_Body</code> action. Available placeholders documented in §10.</span>
+      <b>Restyle a UI panel</b><span>Edit the corresponding HTML in <code>ui/</code>, run the matching deploy script, hard-refresh in the app.</span>
+      <b>Deploy everything from scratch into a new env</b><span><code>scripts/00_full_deploy.ps1</code> (or run scripts in order: create tables → optional tables → forms → web resources → flows). All scripts are idempotent.</span>
+    </div>
+
+    <h3 style="margin-top:22px">12.7 Repository layout</h3>
+<pre style="background:#0d1117;color:#e6edf3;padding:14px;border-radius:8px;font-size:12px;line-height:1.5;overflow-x:auto">
+customers/ametek/hkp_rma/
+├── scripts/                       PowerShell deploy + maintenance scripts
+│   ├── create_rma_returns_monitor_tables.ps1   core tables
+│   ├── create_rma_optional_tables.ps1          config tables
+│   ├── update_config_table_forms.ps1           form field layouts
+│   ├── enhance_routing_rule_ux.ps1             field tooltips
+│   ├── add_routing_main_banner.ps1             section banners
+│   ├── clone_request_manager_approval_for_rma.ps1  approval PA flow
+│   ├── deploy_tracker_v08.ps1                  Pizza Tracker web resource
+│   ├── deploy_help_subarea.ps1                 this Help page web resource
+│   └── inspect_* / test_* / list_*             diagnostic helpers
+├── ui/                            HTML/JS web resources (the &quot;custom UI&quot;)
+│   ├── rma_pizza_tracker.html
+│   ├── rma_smart_insights.html
+│   ├── rma_claims_dashboard.html
+│   ├── rma_email_inbox.html
+│   └── rma_help.html              ← you are here
+├── d365/                          form ribbon JS + metadata exports
+│   └── hkp_rma_form_commands.js
+├── solution/                      packaged solution ZIPs for env transfer
+└── codeapp_source/extracted/      reference schemas (read-only)
+</pre>
+
+    <div class="tip" style="margin-top:14px"><b>Tip:</b> Every deploy script is idempotent and safe to re-run. When in doubt, re-run the whole pipeline — it will skip what already exists and only patch what's drifted.</div>
+  </section>
+  <section id="resolve" class="card">
+    <h2>13. Resolution workflow &amp; ERP integration</h2>
+    <p style="color:var(--muted);margin-top:-6px">How the Issue Credit / Send Replacement / Repair Completed / Other Action buttons work end-to-end, what fields they write, and how to swap the Navision stub for a real ERP call.</p>
+
+    <h3 style="margin-top:18px">13.1 What happens when you click a resolve button</h3>
+    <ol>
+      <li><b>Modal opens</b> with a template picker (filtered by action: <code>Credit:</code>, <code>Replacement:</code>, <code>Repair:</code>, or all non-denial for <i>Other</i>), an editable email body (placeholders auto-merged from the claim), and an editable amount field (Credit/Replacement only).</li>
+      <li><b>Amount default:</b> the most recent <i>Approved</i> <code>rma_approvalrecord</code> for this claim, otherwise the claim's <code>rma_creditamount</code>. If you change it, an <b>Override reason</b> field appears and is required.</li>
+      <li><b>On Confirm</b> three things happen in parallel:
+        <ul>
+          <li>A timeline note is written (subject + full email body + override info).</li>
+          <li>An <code>rma_approvalhistory</code> row is created with: <code>rma_action</code>, <code>rma_amount</code>, <code>rma_amountoriginal</code>, <code>rma_amountoverridden</code>, <code>rma_overridereason</code>, <code>rma_emailto</code>, <code>rma_emailbody</code>, <code>rma_erpstatus</code> (Pending for Credit/Replacement, Not Required for Repair/Other).</li>
+          <li>If "Send email" is checked, a Dataverse email activity is created and sent to the customer (regarding the claim).</li>
+        </ul>
+      </li>
+      <li><b>Claim is closed</b>: <code>rma_resolution</code> set, <code>rma_status</code> &rarr; Closed, <code>rma_closeddate</code> stamped.</li>
+      <li>If <code>rma_erpstatus = Pending</code>, the <b>RMA: Push Resolution to ERP (stub)</b> flow fires within ~30s, generates a stub reference (<code>STUB-NAV-xxxxxxxxxxxx</code>), and flips the history row to <code>Sent</code>.</li>
+    </ol>
+
+    <h3 style="margin-top:18px">13.2 Schema additions (rma_approvalhistory)</h3>
+    <div class="grid">
+      <b>rma_amount</b><span>Money &mdash; what was actually paid/issued.</span>
+      <b>rma_amountoriginal</b><span>Money &mdash; what the manager originally approved (for audit diff).</span>
+      <b>rma_amountoverridden</b><span>Bool &mdash; true if operator changed amount at confirm.</span>
+      <b>rma_overridereason</b><span>Text 500 &mdash; reason the operator gave for the override.</span>
+      <b>rma_emailto</b><span>Text 200 &mdash; recipient of the resolution email.</span>
+      <b>rma_emailbody</b><span>Memo &mdash; snapshot of the body that was sent (as the operator edited it).</span>
+      <b>rma_erpstatus</b><span>Picklist: Not Required / Pending / Sent / Failed.</span>
+      <b>rma_erpreference</b><span>Text 100 &mdash; doc id returned by ERP (or stub ref).</span>
+      <b>rma_erppayload</b><span>Memo &mdash; full JSON pushed to ERP, for audit/debug.</span>
+      <b>rma_action (new options)</b><span>Credit Issued (100000004), Replacement Sent (100000005), Repair Completed (100000006), Other Action (100000007).</span>
+    </div>
+
+    <h3 style="margin-top:18px">13.3 The ERP stub flow</h3>
+    <p>Source: <code>scripts/clone_push_resolution_to_erp.ps1</code>. Trigger: <code>rma_approvalhistory</code> row added with <code>rma_erpstatus = Pending</code>. Actions: get parent claim &rarr; build payload (Compose) &rarr; STUB ref generator (Compose) &rarr; PATCH history row to Sent.</p>
+    <div class="tip"><b>Important:</b> After running the script, you <b>must</b> open the flow in <a href="https://make.powerautomate.com" target="_blank" rel="noopener">Power Automate maker UI</a> and click Save once. Programmatic POST creates the flow shell but does <b>not</b> register the Dataverse trigger webhook &mdash; the runtime registers it on first maker-UI save.</div>
+
+    <h3 style="margin-top:18px">13.4 Swapping the stub for a real Navision push</h3>
+    <ol>
+      <li>Open the flow in maker UI. Find the action <b>Push_to_ERP_STUB</b>.</li>
+      <li>Delete it. Add an <b>HTTP</b> action in its place named <code>Push_to_ERP</code>:
+        <ul>
+          <li><b>Method</b>: POST</li>
+          <li><b>URI</b>: your Business Central / Navision endpoint (likely via on-prem data gateway)</li>
+          <li><b>Headers</b>: <code>Authorization: Bearer ...</code> (use a connection reference for OAuth/Azure AD)</li>
+          <li><b>Body</b>: <code>@{outputs('Build_ERP_payload')}</code></li>
+        </ul>
+      </li>
+      <li>In the next action <b>Update_history_row_Sent</b>, bind <code>rma_erpreference</code> to the doc id returned by the HTTP call (e.g. <code>@{body('Push_to_ERP')?['documentId']}</code>).</li>
+      <li>Add a <b>Configure run after</b> on the update action: also run when Push_to_ERP <i>fails</i>, and in that branch PATCH <code>rma_erpstatus</code> &rarr; <b>Failed</b> with the error message in <code>rma_erppayload</code>.</li>
+      <li>Save and re-test.</li>
+    </ol>
+
+    <h3 style="margin-top:18px">13.5 Email templates for resolutions</h3>
+    <p>The modal filters templates by name prefix:</p>
+    <div class="grid">
+      <b>/^Credit:/i</b><span>Shown when operator clicks <b>Issue Credit</b>. Seeded: <code>Credit: Standard</code>, <code>Credit: Goodwill</code>.</span>
+      <b>/^Replacement:/i</b><span>Shown for <b>Send Replacement</b>. Seeded: <code>Replacement: Standard</code>, <code>Replacement: Expedited</code>.</span>
+      <b>/^Repair:/i</b><span>Shown for <b>Repair Completed</b>. Seeded: <code>Repair: Standard</code>.</span>
+      <b>(all non-denial)</b><span><b>Other Action</b> shows every non-<code>Denial:</code> template &mdash; for ad-hoc situations.</span>
+    </div>
+    <p>To add a new template: open the <b>Email Templates</b> table in the app, create a row, set Name (e.g. <code>Credit: Partial</code>), Subject, Body (use placeholders <code>{firstName}</code>, <code>{claimNumber}</code>, <code>{amount}</code>), Active = Yes.</p>
+
+    <h3 style="margin-top:18px">13.6 Audit trail &mdash; where to look</h3>
+    <div class="grid">
+      <b>Per-claim timeline</b><span>The claim form's Timeline tab. Subject contains the action label + amount; body contains override info and the full email body.</span>
+      <b>Per-claim approval history</b><span>The <code>rma_approvalhistory</code> sub-grid on the claim. Each row is a discrete action with amount, override flag, ERP status.</span>
+      <b>ERP push status</b><span>Filter the <b>Approval History</b> view by <code>rma_erpstatus = Failed</code> to find ERP push failures.</span>
+      <b>Override audit</b><span>Filter <b>Approval History</b> by <code>rma_amountoverridden = Yes</code> to surface every operator override of an approved amount.</span>
+    </div>
+  </section>
+  <footer>
+    RMA Operations and Monitoring — internal help. For issues, file a ticket against the RMA Solution Accelerator team.
+  </footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HKP Warranty &amp; RMA Triage — Rules Cookbook</title>
+<style>
+  :root {
+    --hkp-blue:   #003a70;
+    --hkp-amber:  #f7a813;
+    --hkp-grey:   #4a4a4a;
+    --hkp-green:  #28a745;
+    --hkp-red:    #dc3545;
+    --bg-card:    #ffffff;
+    --bg-page:    #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    margin: 0; padding: 24px;
+    background: var(--bg-page); color: #222;
+    line-height: 1.5;
+  }
+  h1 {
+    color: var(--hkp-blue);
+    border-bottom: 3px solid var(--hkp-amber);
+    padding-bottom: 8px; margin-bottom: 4px;
+  }
+  h2 {
+    color: var(--hkp-blue);
+    margin-top: 32px; padding: 8px 12px;
+    background: linear-gradient(90deg, rgba(0,58,112,0.05) 0%, rgba(0,58,112,0) 100%);
+    border-left: 4px solid var(--hkp-amber);
+  }
+  .lead {
+    background: var(--bg-card);
+    border-left: 4px solid var(--hkp-blue);
+    padding: 12px 18px; margin: 16px 0 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .card {
+    background: var(--bg-card);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 12px 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  table {
+    border-collapse: collapse; width: 100%;
+    margin-top: 8px;
+  }
+  th, td {
+    text-align: left; padding: 8px 12px;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+  }
+  th {
+    background: var(--hkp-blue); color: white;
+    font-weight: 600;
+  }
+  tr:hover { background: #f9fafb; }
+  .tier-1 { background: #e6f4ea; color: #137333; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 12px; }
+  .tier-2 { background: #fef7e0; color: #ea8600; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 12px; }
+  .tier-3 { background: #f1f3f4; color: #5f6368; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 12px; }
+  .badge-eligible   { background: #d4edda; color: #155724; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 12px; }
+  .badge-ineligible { background: #f8d7da; color: #721c24; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 12px; }
+  .badge-unclear    { background: #fff3cd; color: #856404; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 12px; }
+  code {
+    background: #f1f3f4; padding: 2px 6px; border-radius: 3px;
+    font-family: 'Consolas', monospace; font-size: 13px;
+  }
+  .note {
+    font-size: 13px; color: var(--hkp-grey);
+    font-style: italic;
+    margin-top: 8px;
+  }
+  .keyword-list {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin-top: 8px;
+  }
+  .keyword-list span {
+    background: #f1f3f4; padding: 4px 10px; border-radius: 12px;
+    font-size: 12px; font-family: 'Consolas', monospace;
+  }
+  .keyword-list.misuse span    { background: #f8d7da; color: #721c24; }
+  .keyword-list.defect span    { background: #d4edda; color: #155724; }
+  .keyword-list.envir span     { background: #fff3cd; color: #856404; }
+  .footer {
+    margin-top: 48px; padding: 16px;
+    text-align: center; color: var(--hkp-grey);
+    font-size: 12px; border-top: 1px solid #ddd;
+  }
+  .editable {
+    background: #fff8dc;
+    border-left: 3px solid var(--hkp-amber);
+    padding: 8px 12px;
+    margin: 8px 0;
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+
+<h1>HKP Warranty &amp; RMA Triage — Rules Cookbook</h1>
+<p class="lead">
+  This is the <strong>complete decision logic</strong> the AI agent uses to triage every inbound RMA.
+  Every table here is a JSON config file in the repo at <code>customers/ametek/hkp_rma/config/</code> —
+  HKP can edit these files, redeploy in seconds, and the agent's behavior changes.
+  No code changes required.
+</p>
+
+<h2>1. Product family + warranty terms</h2>
+<div class="card">
+<table>
+  <thead>
+    <tr><th>SKU prefix</th><th>Product family</th><th>Warranty (months)</th><th>Engineer area</th><th>Replacement cost (est.)</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>iDEA-57</code></td><td>iDEA 57mm Linear Actuator</td><td>24</td><td>57mm Series</td><td>$4,200</td></tr>
+    <tr><td><code>iDEA-43</code></td><td>iDEA 43mm Linear Actuator</td><td>18</td><td>Mid Frame Series</td><td>$2,800</td></tr>
+    <tr><td><code>iDEA-35</code></td><td>iDEA 35mm Linear Actuator (Compact)</td><td>18</td><td>Mid Frame Series</td><td>$1,950</td></tr>
+    <tr><td><code>iDEA-28</code></td><td>iDEA 28mm Linear Actuator</td><td>12</td><td>Compact Series</td><td>$1,100</td></tr>
+  </tbody>
+</table>
+<div class="editable">
+<strong>Edit:</strong> <code>customers/ametek/hkp_rma/config/product_families.json</code> — add new SKU prefixes, change warranty months, override per-OEM contracts.
+</div>
+</div>
+
+<h2>2. OEM tier &amp; SLA matrix</h2>
+<div class="card">
+<table>
+  <thead>
+    <tr><th>Tier</th><th>OEM accounts</th><th>Email domains</th><th>Auto-approve cap</th><th>First-response SLA</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><span class="tier-1">TIER 1</span> Strategic OEM</td>
+      <td>Andersen Windows OEM<br>Marvin Holdings</td>
+      <td><code>andersenwindows.com</code><br><code>marvin.com</code></td>
+      <td>$7,500</td>
+      <td>2 business hours</td>
+    </tr>
+    <tr>
+      <td><span class="tier-2">TIER 2</span> Standard OEM</td>
+      <td>Pella Corporation<br>Velux Group</td>
+      <td><code>pella.com</code><br><code>velux.com</code></td>
+      <td>$3,500</td>
+      <td>8 business hours</td>
+    </tr>
+    <tr>
+      <td><span class="tier-3">TIER 3</span> Distributor / Other</td>
+      <td>Acme Window Distribution<br>End-users</td>
+      <td>(any other)</td>
+      <td>$1,000</td>
+      <td>24 business hours</td>
+    </tr>
+  </tbody>
+</table>
+<div class="editable">
+<strong>Edit:</strong> <code>customers/ametek/hkp_rma/config/oem_tiers.json</code> — add OEMs, change tier assignments, override SLAs by contract.
+</div>
+</div>
+
+<h2>3. Failure-mode keyword library</h2>
+<div class="card">
+  <p><strong>Misuse keywords</strong> (always trigger reject):</p>
+  <div class="keyword-list misuse">
+    <span>dropped</span><span>impact</span><span>fell</span><span>water damage</span>
+    <span>submerged</span><span>flood</span><span>lightning</span><span>power surge</span>
+    <span>overvoltage</span><span>exceeded rated</span><span>wrong voltage</span><span>tampered</span>
+    <span>modified</span><span>disassembled</span><span>burned</span><span>fire damage</span>
+    <span>smoke damage</span><span>physical damage</span>
+  </div>
+
+  <p style="margin-top:16px;"><strong>Manufacturing-defect keywords</strong> (likely eligible if in warranty):</p>
+  <div class="keyword-list defect">
+    <span>lead screw</span><span>thread shear</span><span>thread stripped</span><span>stripped thread</span>
+    <span>bearing noise</span><span>bearing wear</span><span>bearing failure</span><span>encoder</span>
+    <span>encoder drift</span><span>stepper</span><span>stator</span><span>rotor</span><span>winding</span>
+    <span>manufacturing defect</span><span>premature failure</span><span>premature wear</span>
+    <span>failed at</span><span>seized</span><span>shorted</span><span>open circuit</span>
+    <span>intermittent operation</span>
+  </div>
+
+  <p style="margin-top:16px;"><strong>Installation-environment keywords</strong> (escalate to engineer):</p>
+  <div class="keyword-list envir">
+    <span>vfd</span><span>variable frequency drive</span><span>emi</span><span>electrical noise</span>
+    <span>neighbouring drive</span><span>shielding</span><span>ground loop</span>
+    <span>noisy environment</span><span>interference</span>
+  </div>
+
+<div class="editable">
+<strong>Edit:</strong> <code>customers/ametek/hkp_rma/config/failure_modes.json</code> — add HKP-specific failure code vocabulary, refine confidence-by-keyword as field data accumulates.
+</div>
+</div>
+
+<h2>4. Eligibility decision tree</h2>
+<div class="card">
+<table>
+  <thead>
+    <tr><th>#</th><th>Condition</th><th>Verdict</th><th>Reason / next action</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>1</td><td>Any misuse keyword present</td><td><span class="badge-ineligible">INELIGIBLE</span></td><td>Warranty exclusion. Reject + offer paid quote.</td></tr>
+    <tr><td>2</td><td>Description &lt; 60 chars or no failure-mode keyword</td><td><span class="badge-unclear">UNCLEAR</span></td><td>Request more info from customer.</td></tr>
+    <tr><td>3</td><td>More than 90 days past warranty end</td><td><span class="badge-ineligible">INELIGIBLE</span></td><td>Reject. Offer paid repair quote.</td></tr>
+    <tr><td>4</td><td>0–90 days past warranty (borderline)</td><td><span class="badge-unclear">UNCLEAR</span></td><td>Request usage data + duty cycle. Possible goodwill repair.</td></tr>
+    <tr><td>5</td><td>In warranty + manufacturing-defect keyword</td><td><span class="badge-eligible">ELIGIBLE</span></td><td>Auto-approve replace or repair based on failure mode.</td></tr>
+    <tr><td>6</td><td>In warranty + EMI/installation keyword</td><td><span class="badge-unclear">UNCLEAR</span></td><td>Escalate to Quality Engineer for review.</td></tr>
+    <tr><td>7</td><td>In warranty, no failure-mode match</td><td><span class="badge-unclear">UNCLEAR</span></td><td>Request photos + duty cycle history.</td></tr>
+  </tbody>
+</table>
+<p class="note">Rules evaluated top-down. First match wins.</p>
+<div class="editable">
+<strong>Edit:</strong> <code>customers/ametek/hkp_rma/config/eligibility_rules.json</code> — change rule order, adjust thresholds (90-day grace period, 60-char minimum), add rules for new product lines.
+</div>
+</div>
+
+<h2>5. Disposition matrix &amp; confidence</h2>
+<div class="card">
+<table>
+  <thead>
+    <tr><th>Eligibility</th><th>Description signal</th><th>Disposition</th><th>Base confidence</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>ineligible (misuse)</td><td>—</td><td><span class="badge-ineligible">reject</span></td><td>0.95</td></tr>
+    <tr><td>ineligible (out of warranty &gt; 90d)</td><td>—</td><td><span class="badge-ineligible">reject</span></td><td>0.92</td></tr>
+    <tr><td>unclear (borderline / sparse)</td><td>bearing wear hint</td><td>request_more_info</td><td>0.55</td></tr>
+    <tr><td>unclear (sparse)</td><td>—</td><td>request_more_info</td><td>0.50</td></tr>
+    <tr><td>unclear (EMI / installation)</td><td>—</td><td>escalate_to_engineer</td><td>0.45</td></tr>
+    <tr><td>eligible</td><td>bearing noise / wear</td><td><span class="badge-eligible">approve_repair</span></td><td>0.78</td></tr>
+    <tr><td>eligible</td><td>lead screw / thread / shear</td><td><span class="badge-eligible">approve_replace</span></td><td>0.92</td></tr>
+    <tr><td>eligible</td><td>otherwise</td><td><span class="badge-eligible">approve_replace</span></td><td>0.75</td></tr>
+  </tbody>
+</table>
+
+<p style="margin-top:16px;"><strong>Confidence adjustments:</strong></p>
+<ul>
+  <li>Tier 1 OEM in-warranty + clear defect → <strong>+0.05</strong> (boost up to max 0.97)</li>
+  <li>Repeat claim from same OEM for same SKU within 60 days → <strong>−0.10</strong> (force human review)</li>
+  <li>Confidence below <strong>0.70</strong> → <code>humanReviewRequired = true</code> (route through Manager Approval)</li>
+</ul>
+
+<p style="margin-top:16px;"><strong>Cost-tier guardrails:</strong></p>
+<ul>
+  <li><code>approve_replace</code> AND unit cost &gt; tier auto-approve cap → require Manager Approval</li>
+  <li><code>approve_refund</code> AND amount &gt; $5,000 → require Executive Approval</li>
+</ul>
+
+<div class="editable">
+<strong>Edit:</strong> all four configs above — disposition matrix is computed from the cross-product. Change confidence floors and cost caps in <code>eligibility_rules.json</code>.
+</div>
+</div>
+
+<h2>6. Disposition → execution map</h2>
+<div class="card">
+<table>
+  <thead>
+    <tr><th>Disposition</th><th>What happens</th><th>Customer email tone</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><span class="badge-eligible">approve_replace</span></td><td>Trigger SendShippingLabel flow → email customer with label attached</td><td>"Approved. Shipping label attached."</td></tr>
+    <tr><td><span class="badge-eligible">approve_repair</span></td><td>Same shipping flow, repair-bound</td><td>"Approved for repair. Use the included label."</td></tr>
+    <tr><td>approve_refund</td><td>RequestManagerApproval flow → after approval, send refund-confirmation email</td><td>"Approved for refund pending final review."</td></tr>
+    <tr><td><span class="badge-ineligible">reject</span></td><td>Send rejection email with reason</td><td>"Cannot accept under warranty. Paid-quote available?"</td></tr>
+    <tr><td>request_more_info</td><td>Send info-request email with checklist</td><td>"Need photos + error codes + cycle count."</td></tr>
+    <tr><td>escalate_to_engineer</td><td>RouteEscalation → Teams DM to engineer + customer notification</td><td>"Under engineering review. Response within {SLA hours}."</td></tr>
+  </tbody>
+</table>
+<div class="editable">
+<strong>Edit:</strong> <code>customers/ametek/hkp_rma/config/email_templates.json</code> + <code>engineer_roster.json</code> — change template wording, swap engineer Teams handles, add new dispositions.
+</div>
+</div>
+
+<h2>7. Demo scenarios (all use seeded Dataverse data)</h2>
+<div class="card">
+<table>
+  <thead>
+    <tr><th>#</th><th>Serial</th><th>OEM</th><th>Warranty</th><th>Failure mode</th><th>Expected disposition</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td><code>IDEA-57-2025-104872</code></td>
+      <td><span class="tier-1">TIER 1</span> Andersen</td>
+      <td>In warranty (18 mo remain)</td>
+      <td>Lead screw thread shear</td>
+      <td><span class="badge-eligible">approve_replace</span> conf 0.92+0.05=0.97</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><code>IDEA-43-2022-087221</code></td>
+      <td><span class="tier-2">TIER 2</span> Pella</td>
+      <td>Out of warranty 720 days</td>
+      <td>Bearing failure</td>
+      <td><span class="badge-ineligible">reject</span> + paid quote, conf 0.92</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td><code>IDEA-35-2024-093311</code></td>
+      <td><span class="tier-1">TIER 1</span> Marvin</td>
+      <td>Borderline (60 days past)</td>
+      <td>VFD / EMI suspected</td>
+      <td><span class="badge-unclear">unclear</span> → escalate_to_engineer (Maya Patel, Mid Frame)</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td><code>IDEA-28-2025-201155</code></td>
+      <td><span class="tier-3">TIER 3</span> Acme Distrib.</td>
+      <td>In warranty (9 mo remain)</td>
+      <td>Water damage / submerged</td>
+      <td><span class="badge-ineligible">reject</span> (misuse), conf 0.95</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td><code>IDEA-57-2025-104880</code></td>
+      <td><span class="tier-1">TIER 1</span> Andersen</td>
+      <td>In warranty + repeat-claim signal</td>
+      <td>Lead screw, 3rd RMA / 60 days</td>
+      <td><span class="badge-eligible">approve_replace</span> but humanReview=true (−0.10), Manager Approval</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>8. The pitch</h2>
+<div class="card" style="background: #fff8dc; border-left: 4px solid var(--hkp-amber);">
+<p><strong>This is the entire decision logic for HKP RMA triage.</strong> Today, this lives in your QA team's heads, in spreadsheets, and in tribal knowledge that takes 18 months to onboard a new triager.</p>
+<p>We just put it in <strong>six JSON files and one set of agent instructions</strong> — both human-readable, both version-controlled. Your QA leadership can change a row and the agent's behavior shifts in production within 30 seconds. Your engineers can audit every decision the agent made by reading the supporting facts.</p>
+<p><strong>Phase 1</strong> (live today): Email triage, eligibility, disposition recommendation, customer reply, claim record, Teams notification.<br>
+<strong>Phase 2</strong> (4–6 weeks): Real serial lookup against Salesforce/SAP, manager approval workflows, repeat-claim history detection.<br>
+<strong>Phase 3</strong> (8–12 weeks): Engineer roster routing with adaptive cards, SLA dashboards, integration with HKP's quote system for paid-repair offers.</p>
+</div>
+
+<div class="footer">
+HKP Warranty &amp; RMA Triage — Rules Cookbook · Generated 5/5/2026 · Microsoft Industry Solutions
+</div>
+
+</body>
+</html>

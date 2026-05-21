@@ -1,0 +1,58 @@
+[
+  {
+    "Entity": "rma_claim",
+    "Label": "Resolve - Credit Issued",
+    "FuncName": "HKPCommands.resolveCredit",
+    "Status": "CREATED",
+    "Id": "fb3e77a7-ee4e-f111-bec6-000d3a5aed87",
+    "Error": null
+  },
+  {
+    "Entity": "rma_claim",
+    "Label": "Resolve - Replacement Sent",
+    "FuncName": "HKPCommands.resolveReplacement",
+    "Status": "CREATED",
+    "Id": "153f77a7-ee4e-f111-bec6-000d3a5aed87",
+    "Error": null
+  },
+  {
+    "Entity": "rma_claim",
+    "Label": "Resolve - Repair Completed",
+    "FuncName": "HKPCommands.resolveRepair",
+    "Status": "CREATED",
+    "Id": "1d3f77a7-ee4e-f111-bec6-000d3a5aed87",
+    "Error": null
+  },
+  {
+    "Entity": "rma_claim",
+    "Label": "Deny Claim",
+    "FuncName": "HKPCommands.denyClaim",
+    "Status": "CREATED",
+    "Id": "253f77a7-ee4e-f111-bec6-000d3a5aed87",
+    "Error": null
+  },
+  {
+    "Entity": "rma_claim",
+    "Label": "Send Customer Email",
+    "FuncName": "HKPCommands.sendCustomerEmail",
+    "Status": "CREATED",
+    "Id": "2d3f77a7-ee4e-f111-bec6-000d3a5aed87",
+    "Error": null
+  },
+  {
+    "Entity": "rma_claim",
+    "Label": "Request Manager Approval",
+    "FuncName": "HKPCommands.requestManagerApproval",
+    "Status": "CREATED",
+    "Id": "353f77a7-ee4e-f111-bec6-000d3a5aed87",
+    "Error": null
+  },
+  {
+    "Entity": "rma_emaillog",
+    "Label": "Create RMA Claim from Email",
+    "FuncName": "HKPCommands.createClaimFromEmail",
+    "Status": "CREATED",
+    "Id": "17d376ad-ee4e-f111-bec6-000d3a5aed87",
+    "Error": null
+  }
+]

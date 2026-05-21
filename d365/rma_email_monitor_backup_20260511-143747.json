@@ -1,0 +1,412 @@
+{
+  "name": "b26a7f4b-b181-cd5e-ff45-454939890b06",
+  "id": "/providers/Microsoft.ProcessSimple/environments/2404ccaf-d7e5-e1ff-863a-3ecbe2f0f013/flows/b26a7f4b-b181-cd5e-ff45-454939890b06",
+  "type": "Microsoft.ProcessSimple/environments/flows",
+  "properties": {
+    "apiId": "/providers/Microsoft.PowerApps/apis/shared_logicflows",
+    "displayName": "RMA Email Monitor",
+    "userType": "Owner",
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        }
+      },
+      "triggers": {
+        "When_a_new_email_arrives_in_a_shared_mailbox_(V2)": {
+          "recurrence": {
+            "frequency": "Minute",
+            "interval": 1
+          },
+          "evaluatedRecurrence": {
+            "frequency": "Minute",
+            "interval": 1
+          },
+          "splitOn": "@triggerOutputs()?['body/value']",
+          "metadata": {
+            "operationMetadataId": "b57e772d-7e5a-4bc7-9ffc-503222a82d86"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "mailboxAddress": "rmarequest@D365DemoTSCE30330346.onmicrosoft.com;",
+              "importance": "Any",
+              "hasAttachments": false,
+              "includeAttachments": false,
+              "folderId": "Inbox"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+              "connectionName": "shared_office365",
+              "operationId": "SharedMailboxOnNewEmailV2"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        }
+      },
+      "actions": {
+        "ExtractCompany": {
+          "runAfter": {
+            "EmailText": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@trim(first(split(last(split(string(outputs('EmailText')), 'Company:</b>')), '<')))"
+        },
+        "EmailText": {
+          "runAfter": {},
+          "type": "Compose",
+          "inputs": "@triggerBody()"
+        },
+        "ExtractEmail": {
+          "runAfter": {
+            "ExtractCompany": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@trim(first(split(last(split(string(outputs('EmailText')), 'Email:</b>')), '<')))"
+        },
+        "ExtractPhone": {
+          "runAfter": {
+            "ExtractEmail": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@trim(first(split(last(split(string(outputs('EmailText')), 'Phone:</b>')), '<')))"
+        },
+        "ExtractReturnAddress": {
+          "runAfter": {
+            "ExtractPhone": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@trim(first(split(last(split(string(outputs('EmailText')), 'Address returned parts will be shipped to:</b>')), '<')))"
+        },
+        "ExtractQuantity": {
+          "runAfter": {
+            "ExtractReturnAddress": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@trim(first(split(last(split(string(outputs('EmailText')), 'Quantity of Suspected Parts:</b>')), '<')))"
+        },
+        "ExtractPONumber": {
+          "runAfter": {
+            "ExtractQuantity": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@trim(first(split(last(split(string(outputs('EmailText')), 'PO Number parts were ordered on:</b>')), '<')))"
+        },
+        "ExtractDateCodeorSerial": {
+          "runAfter": {
+            "ExtractPONumber": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@trim(first(split(last(split(string(outputs('EmailText')), 'Manufacturing date code or Serial number:</b>')), '<')))"
+        },
+        "ExtractPartNumber": {
+          "runAfter": {
+            "ExtractDateCodeorSerial": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@trim(first(split(last(split(string(outputs('EmailText')), 'AMETEK Part Number:</b>')), '<')))\r\n"
+        },
+        "ExtractMfgLocation": {
+          "runAfter": {
+            "ExtractPartNumber": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@trim(first(split(last(split(string(outputs('EmailText')), 'Mfg Location:</b>')), '<')))\r\n"
+        },
+        "ExtractComplaintReason": {
+          "runAfter": {
+            "ExtractMfgLocation": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@trim(first(split(last(split(string(outputs('EmailText')), 'What is the complaint reason with details:</b>')), '<')))\r\n"
+        },
+        "CompliantReasonOther": {
+          "runAfter": {
+            "ExtractComplaintReason": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@trim(first(split(last(split(string(outputs('EmailText')), 'What is the complaint reason (other):</b>')), '<')))\r\n"
+        },
+        "ExtractSalesRep": {
+          "runAfter": {
+            "CompliantReasonOther": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@trim(first(split(last(split(string(outputs('EmailText')), 'HKP Sales Rep:</b>')), '<')))\r\n"
+        },
+        "ExtractHowDetected": {
+          "runAfter": {
+            "ExtractSalesRep": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@trim(first(split(last(split(string(outputs('EmailText')), 'How was the issue detected?:</b>')), '<')))"
+        },
+        "ExtractProductDescription": {
+          "runAfter": {
+            "ExtractHowDetected": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@trim(first(split(last(split(string(outputs('EmailText')), 'Product Description:</b>')), '<')))"
+        },
+        "ExtractWhereDetected": {
+          "runAfter": {
+            "ExtractProductDescription": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@trim(first(split(last(split(string(outputs('EmailText')), 'Where in your process was the suspect part detected?:</b>')), '<')))\r\n"
+        },
+        "ExtractNCRNumber": {
+          "runAfter": {
+            "ExtractWhereDetected": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@trim(first(split(last(split(string(outputs('EmailText')), 'Is there a Non-Conformance Report?  If so, what is the report number?:</b>')), '<')))\r\n"
+        },
+        "ExtractOtherComments": {
+          "runAfter": {
+            "ExtractNCRNumber": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@trim(first(split(last(split(string(outputs('EmailText')), 'Other comments:</b>')), '<')))\r\n"
+        },
+        "Create_item": {
+          "runAfter": {
+            "ExtractOtherComments": [
+              "Succeeded"
+            ]
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "dataset": "https://d365demotsce30330346.sharepoint.com/sites/Sales",
+              "table": "cd319f3e-290f-402a-8d87-37c40a746bdb",
+              "item/Title": "New RMA Request",
+              "item/Subject": "@triggerOutputs()?['body/subject']",
+              "item/From": "@triggerOutputs()?['body/from']",
+              "item/ReceivedDateTime": "@triggerOutputs()?['body/receivedDateTime']",
+              "item/BodyPreview": "@triggerOutputs()?['body/bodyPreview']",
+              "item/MessageId": "@triggerOutputs()?['body/id']",
+              "item/HasAttachments": false,
+              "item/IsProcessed": false,
+              "item/BodyFull": "@triggerOutputs()?['body/body']",
+              "item/Company": "@outputs('ExtractCompany')",
+              "item/Phone": "@outputs('ExtractPhone')",
+              "item/ReturnAddress": "@outputs('ExtractReturnAddress')",
+              "item/Quantity": "@outputs('ExtractQuantity')",
+              "item/PONumber": "@outputs('ExtractPONumber')",
+              "item/DateCodeOrSerial": "@outputs('ExtractDateCodeorSerial')",
+              "item/PartNumber": "@outputs('ExtractPartNumber')",
+              "item/MfgLocation": "@outputs('ExtractMfgLocation')",
+              "item/ComplaintReason": "@outputs('ExtractComplaintReason')",
+              "item/ComplaintReasonOther": "@outputs('CompliantReasonOther')",
+              "item/SalesRep": "@outputs('ExtractSalesRep')",
+              "item/HowDetected": "@outputs('ExtractHowDetected')",
+              "item/ProductDescription": "@outputs('ExtractProductDescription')",
+              "item/WhereDetected": "@outputs('ExtractWhereDetected')",
+              "item/NCRNumber": "@outputs('ExtractNCRNumber')",
+              "item/OtherComments": "@outputs('ExtractOtherComments')",
+              "item/{ContentType}/Id": "0x0100D79D33EA5AB95743A2A9A1E732177F2F00AC179BDEDD1CA84A9B4A562A7628A0FA"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "PostItem"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        }
+      }
+    },
+    "state": "Started",
+    "sharingType": "CommonDataService",
+    "connectionReferences": {
+      "shared_office365": {
+        "connectionName": "c2d8e04a8cab48a68b7c49980b8a393a",
+        "connectionReferenceLogicalName": "cr74e_autonomousSalesAssistant.shared_office365.c2d8e04a8cab48a68b7c49980b8a393a",
+        "source": "Embedded",
+        "id": "/providers/Microsoft.PowerApps/apis/shared_office365",
+        "displayName": "Office 365 Outlook",
+        "iconUri": "https://static.powerapps.com/resource/ppcr/releases/v1.0.1809/1.0.1809.4721/office365/icon.png",
+        "brandColor": "#0078D4",
+        "tier": "Standard",
+        "apiName": "office365",
+        "isProcessSimpleApiReferenceConversionAlreadyDone": false
+      },
+      "shared_sharepointonline": {
+        "connectionName": "shared-sharepointonl-1c1c9a69-495f-4dce-aec1-2b8784684618",
+        "connectionReferenceLogicalName": "new_sharedsharepointonline_e28a1",
+        "source": "Embedded",
+        "id": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+        "displayName": "SharePoint",
+        "iconUri": "https://static.powerapps.com/resource/ppcr/releases/v1.0.1809/1.0.1809.4714/sharepointonline/icon.png",
+        "brandColor": "",
+        "tier": "Standard",
+        "apiName": "sharepointonline",
+        "isProcessSimpleApiReferenceConversionAlreadyDone": false
+      }
+    },
+    "createdTime": "2026-05-11T17:27:51.6682327Z",
+    "lastModifiedTime": "2026-05-11T19:36:29Z",
+    "flowSuspensionReason": "None",
+    "environment": {
+      "name": "2404ccaf-d7e5-e1ff-863a-3ecbe2f0f013",
+      "type": "Microsoft.ProcessSimple/environments",
+      "id": "/providers/Microsoft.ProcessSimple/environments/2404ccaf-d7e5-e1ff-863a-3ecbe2f0f013"
+    },
+    "definitionSummary": {
+      "triggers": [
+        {
+          "type": "OpenApiConnection",
+          "swaggerOperationId": "SharedMailboxOnNewEmailV2",
+          "metadata": {
+            "operationMetadataId": "b57e772d-7e5a-4bc7-9ffc-503222a82d86"
+          }
+        }
+      ],
+      "actions": [
+        {
+          "type": "Compose"
+        },
+        {
+          "type": "Compose"
+        },
+        {
+          "type": "Compose"
+        },
+        {
+          "type": "Compose"
+        },
+        {
+          "type": "Compose"
+        },
+        {
+          "type": "Compose"
+        },
+        {
+          "type": "Compose"
+        },
+        {
+          "type": "Compose"
+        },
+        {
+          "type": "Compose"
+        },
+        {
+          "type": "Compose"
+        },
+        {
+          "type": "Compose"
+        },
+        {
+          "type": "Compose"
+        },
+        {
+          "type": "Compose"
+        },
+        {
+          "type": "Compose"
+        },
+        {
+          "type": "Compose"
+        },
+        {
+          "type": "Compose"
+        },
+        {
+          "type": "Compose"
+        },
+        {
+          "type": "Compose"
+        },
+        {
+          "type": "OpenApiConnection",
+          "swaggerOperationId": "PostItem"
+        }
+      ]
+    },
+    "creator": {
+      "tenantId": "daa9e2eb-aaf1-46a8-a37e-3fd2e5821cb6",
+      "objectId": "895250cc-1251-4d16-a4d8-1baa368605a9",
+      "userId": "895250cc-1251-4d16-a4d8-1baa368605a9",
+      "userType": "ActiveDirectory"
+    },
+    "installationStatus": "NotApplicable",
+    "provisioningMethod": "FromDefinition",
+    "flowFailureAlertSubscribed": true,
+    "workflowEntityId": "6d9fc9b0-5e4d-f111-bec6-000d3a5aed87",
+    "referencedResources": [
+      {
+        "service": "sharepoint",
+        "resource": {
+          "site": "https://d365demotsce30330346.sharepoint.com/sites/Sales",
+          "list": "cd319f3e-290f-402a-8d87-37c40a746bdb"
+        },
+        "referencers": [
+          {
+            "referenceSourceType": "Actions",
+            "operationId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline/apiOperations/PostItem"
+          },
+          {
+            "referenceSourceType": "Triggers",
+            "operationId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline/apiOperations/PostItem"
+          }
+        ]
+      },
+      {
+        "service": "sharepoint",
+        "resource": {
+          "site": "https://d365demotsce30330346.sharepoint.com/sites/Sales"
+        },
+        "referencers": [
+          {
+            "referenceSourceType": "Actions",
+            "operationId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline/apiOperations/PostItem"
+          }
+        ]
+      }
+    ],
+    "isManaged": false,
+    "machineDescriptionData": {}
+  }
+}

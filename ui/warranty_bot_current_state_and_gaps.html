@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Warranty Claim Processing for Email — Current State &amp; Gap Analysis</title>
+<style>
+  :root {
+    --ms-blue: #0078D4; --ms-blue-dark: #005A9E;
+    --ametek: #003a70;
+    --bg: #f7f8fb; --paper: #ffffff; --border: #e3e7ee;
+    --text: #1a1f2c; --muted: #5b6577;
+    --good: #16a34a; --warn: #d97706; --bad: #dc2626;
+    --gold: #fff8dd; --gold-border: #d97706;
+    --info: #e6f3fb; --info-border: #0078D4;
+    --green-bg: #e8f7ed; --green-border: #16a34a;
+    --purple-bg: #f3edff; --purple-border: #7c3aed;
+    --red-bg: #fee2e2; --red-border: #dc2626;
+    --yellow-bg: #fef3c7; --yellow-border: #d97706;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.55; font-size: 14.5px; }
+
+  header.top {
+    background: linear-gradient(135deg, var(--ametek) 0%, var(--ms-blue) 100%);
+    color: white; padding: 24px 36px;
+  }
+  header.top h1 { margin: 0; font-size: 24px; font-weight: 600; }
+  header.top p  { margin: 4px 0 0; opacity: .92; font-size: 14px; }
+  header.top .meta { margin-top: 10px; font-size: 12px; opacity: .85; display: flex; gap: 16px; flex-wrap: wrap; }
+  header.top .meta b { color: #ffd84d; }
+
+  .actions {
+    background: white; border-bottom: 1px solid var(--border);
+    padding: 10px 36px; display: flex; gap: 8px;
+  }
+  .actions button {
+    background: var(--ms-blue); color: white; border: none; padding: 7px 14px;
+    border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 12.5px;
+  }
+  .actions button.secondary { background: white; border: 1px solid var(--border); color: var(--text); }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr) 320px;
+    gap: 0;
+    max-width: 1640px;
+    margin: 0 auto;
+  }
+
+  nav.left {
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
+    padding: 24px 16px; background: white; border-right: 1px solid var(--border);
+    font-size: 13px;
+  }
+  nav.left h3 { margin: 0 0 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+  nav.left a { display: block; padding: 6px 8px; color: var(--text); text-decoration: none; border-radius: 4px; margin-bottom: 2px; }
+  nav.left a:hover { background: #eef3fb; }
+  nav.left a.section { font-weight: 600; }
+  nav.left a.sub    { padding-left: 22px; font-size: 12.5px; color: var(--muted); }
+  nav.left .sep { border-top: 1px solid var(--border); margin: 14px 0 10px; }
+
+  main { padding: 28px 40px 80px; min-width: 0; }
+  main h2 { font-size: 22px; margin: 36px 0 6px; padding-top: 16px; border-top: 3px solid var(--ms-blue); padding-top: 14px; color: var(--ametek); }
+  main h2:first-of-type { margin-top: 0; }
+  main h3 { font-size: 16px; margin: 22px 0 8px; color: var(--ms-blue-dark); }
+
+  .card {
+    background: white; border: 1px solid var(--border); border-radius: 10px;
+    padding: 22px 26px; margin: 18px 0; box-shadow: 0 1px 3px rgba(0,0,0,.04);
+    page-break-inside: avoid;
+  }
+  .card.have    { border-left: 6px solid var(--good); }
+  .card.gap     { border-left: 6px solid var(--bad); }
+  .card.partial { border-left: 6px solid var(--warn); }
+  .card.plan    { border-left: 6px solid var(--ms-blue); }
+
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 10px; font-size: 11px; font-weight: 500; margin-right: 4px; }
+  .pill.have    { background: var(--green-bg); color: var(--good); }
+  .pill.gap     { background: var(--red-bg);   color: var(--bad); }
+  .pill.partial { background: var(--yellow-bg);color: #b45309; }
+  .pill.plan    { background: var(--info);     color: var(--info-border); }
+  .pill.info    { background: var(--info);     color: var(--info-border); }
+
+  .callout {
+    border-left: 4px solid; border-radius: 6px;
+    padding: 12px 16px; margin: 10px 0;
+  }
+  .callout.info { background: var(--info); border-color: var(--info-border); }
+  .callout.warn { background: var(--yellow-bg); border-color: var(--yellow-border); }
+  .callout.good { background: var(--green-bg); border-color: var(--green-border); }
+  .callout.danger{ background: var(--red-bg); border-color: var(--red-border); }
+  .callout.frontier { background: var(--purple-bg); border-color: var(--purple-border); }
+
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13.5px; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: #f3f6fb; color: var(--ametek); font-weight: 600; font-size: 12.5px; text-transform: uppercase; letter-spacing: .4px; }
+  tr:nth-child(even) td { background: #fafbfd; }
+
+  .copyable {
+    background: #f0f4ff; border: 2px solid var(--info-border); border-radius: 8px;
+    padding: 12px 14px; margin: 10px 0; font-family: ui-monospace, "Consolas", monospace;
+    font-size: 13px; position: relative;
+  }
+  .copyable code { display: block; white-space: pre-wrap; word-break: break-word; }
+  .copyable .copy-btn {
+    position: absolute; top: 8px; right: 8px;
+    background: white; border: 1px solid var(--border); border-radius: 4px;
+    padding: 3px 9px; font-size: 11px; cursor: pointer;
+    font-family: "Segoe UI", system-ui, sans-serif;
+  }
+
+  .step-num {
+    display: inline-block; background: var(--ms-blue); color: white;
+    width: 26px; height: 26px; border-radius: 50%;
+    text-align: center; line-height: 26px; font-weight: 700; font-size: 13px;
+    margin-right: 8px;
+  }
+  .step-num.have { background: var(--good); }
+  .step-num.gap  { background: var(--bad); }
+  .step-num.partial { background: var(--warn); }
+
+  /* Right panel */
+  aside.right {
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
+    padding: 24px 18px; background: white; border-left: 1px solid var(--border);
+    font-size: 13px;
+  }
+  aside.right h3 { margin: 0 0 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+  aside.right .summary {
+    background: #f7f8fb; border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px; margin: 10px 0;
+  }
+  aside.right .summary .num { font-size: 28px; font-weight: 700; color: var(--ms-blue); display: block; line-height: 1; }
+  aside.right .summary .lbl { font-size: 12px; color: var(--muted); }
+  aside.right .legend-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 12.5px; }
+  aside.right .legend-row .dot { width: 12px; height: 12px; border-radius: 3px; }
+  aside.right .legend-row .dot.good { background: var(--good); }
+  aside.right .legend-row .dot.bad  { background: var(--bad); }
+  aside.right .legend-row .dot.warn { background: var(--warn); }
+  aside.right .legend-row .dot.plan { background: var(--ms-blue); }
+
+  /* Print */
+  @media print {
+    nav.left, aside.right, .actions { display: none; }
+    .layout { display: block; }
+    main { padding: 0 24px; }
+    body { background: white; font-size: 11pt; }
+    .card, .copyable { page-break-inside: avoid; }
+    .copy-btn { display: none; }
+    header.top { background: var(--ametek) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>Warranty Claim Processing for Email — Current State &amp; Gap Analysis</h1>
+  <p>What the Copilot Studio bot does today vs what HKP RMA needs · Build plan to bridge the gap</p>
+  <div class="meta">
+    <span><b>Bot:</b> Warranty Claim Processing for Email</span>
+    <span><b>Bot ID:</b> 5e16b1a5-ab89-f011-b4cc-7c1e525a3c6b</span>
+    <span><b>Env:</b> Master CE Mfg (orgecbce8ef)</span>
+    <span><b>Last modified:</b> 2025-10-22</span>
+    <span><b>Cloned to:</b> copilotstudioclones/Warranty Claim Processing for Email/</span>
+  </div>
+</header>
+
+<div class="actions">
+  <button onclick="window.print()">🖨 Print / Save as PDF</button>
+  <button class="secondary" onclick="window.scrollTo(0,0)">Top</button>
+</div>
+
+<div class="layout">
+
+  <nav class="left">
+    <h3>Sections</h3>
+    <a href="#tldr" class="section">1. TL;DR</a>
+    <a href="#current" class="section">2. What's there today</a>
+    <a href="#current-flow" class="sub">— The 5-step flow</a>
+    <a href="#current-actions" class="sub">— Actions (5)</a>
+    <a href="#current-knowledge" class="sub">— Knowledge (3)</a>
+    <a href="#current-topics" class="sub">— Topics (14)</a>
+    <a href="#current-trigger" class="sub">— Trigger (1)</a>
+    <a href="#current-flows" class="sub">— PA flows (10 in solution)</a>
+
+    <div class="sep"></div>
+    <h3>The gap</h3>
+    <a href="#gap" class="section">3. What HKP RMA needs</a>
+    <a href="#gap-extend" class="sub">— Extend instructions</a>
+    <a href="#gap-actions" class="sub">— New actions (2)</a>
+    <a href="#gap-flows" class="sub">— New / activated flows</a>
+    <a href="#gap-config" class="sub">— Config + rules</a>
+
+    <div class="sep"></div>
+    <h3>Plan</h3>
+    <a href="#plan" class="section">4. Build plan (3 phases)</a>
+    <a href="#plan-1" class="sub">— Phase 1: Validate today</a>
+    <a href="#plan-2" class="sub">— Phase 2: Extend bot</a>
+    <a href="#plan-3" class="sub">— Phase 3: Productionize</a>
+
+    <div class="sep"></div>
+    <h3>Reference</h3>
+    <a href="#generic" class="section">5. Generic vs customer-specific</a>
+    <a href="#risks" class="section">6. Risks &amp; mitigations</a>
+    <a href="#now" class="section">7. What to do next</a>
+  </nav>
+
+  <main>
+
+    <!-- ========== TL;DR ========== -->
+    <h2 id="tldr">1. TL;DR</h2>
+
+    <div class="card plan">
+      <p>The <b>Warranty Claim Processing for Email</b> bot in Master CE Mfg today does an <b>excellent</b> intake-and-acknowledgment workflow. It parses inbound emails, asks the customer for missing fields via HTML email templates, creates a warranty claim record in Dataverse, and posts to Teams. <span class="pill have">5/5 intake actions wired</span></p>
+
+      <p>What it <b>doesn't</b> do yet — and what HKP RMA needs — is <b>triage decisions</b>: warranty lookup by serial, eligibility check against rules, disposition recommendation with confidence + rationale, escalation routing to a Quality Engineer. <span class="pill gap">0/4 triage capabilities</span></p>
+
+      <p>The good news: this is a <b>4-step extension</b> to the agent's <code>instructions:</code> block + <b>2 new actions</b>. We don't replace, we extend. The intake flow stays exactly as built.</p>
+
+      <div class="callout good">
+        <b>Net effort estimate:</b> ~1 dev day to add the 4 instruction steps + 2 actions + test against 5 sample claims. Then a follow-up session with HKP to calibrate failure-mode keywords, OEM tier mapping, and engineer routing.
+      </div>
+    </div>
+
+    <!-- ========== CURRENT STATE ========== -->
+    <h2 id="current">2. What's in the bot today</h2>
+
+    <div class="card have">
+      <h3 id="current-flow">The 5-step flow (encoded in instructions:)</h3>
+      <p>This bot is a <b>generative agent</b> — almost all behavior lives in the instructions block, not in topics. When the email-arrival trigger fires, the agent reads the instructions and orchestrates calls to the 5 actions in this order:</p>
+
+      <div style="margin-top:14px">
+        <p><span class="step-num have">1</span><b>Extract entities</b> from inbound email → uses <code>ExtractEntitiesfromEmailResponseV2</code> action. Pulls FirstName, LastName, SerialNumber, Phone, Email, ProblemDescription.</p>
+        <p><span class="step-num have">2</span><b>If fields missing</b> → reply with HTML template asking customer to fill in the gaps. Uses <code>Office365Outlook-SendanemailV2</code>. (Email template embedded in instructions — formatted HTML table with First Name / Last Name / Serial / Phone / Email / Problem Description rows.)</p>
+        <p><span class="step-num have">3</span><b>On reply, re-extract</b>. If complete → <code>CreateWarrantyClaim</code> action writes the record to <code>cr74e_warrantyclaim</code>. If still incomplete → loop back to step 2.</p>
+        <p><span class="step-num have">4</span><b>Send confirmation email</b> to customer with claim # → <code>Office365Outlook-SendanemailV2_T1N</code> action.</p>
+        <p><span class="step-num have">5</span><b>Post Teams card</b> notifying Warranty Management Team / Contoso Warranty channel → <code>MicrosoftTeams-Postcardinachatorchannel</code> action.</p>
+      </div>
+
+      <div class="callout info">
+        <b>Architectural note:</b> This is the <b>"single LLM-orchestrated agent"</b> pattern, not the <b>"router with N topics"</b> pattern. That's actually ideal for adding triage — we extend the instructions block with steps 6-9, the same agent reads them.
+      </div>
+    </div>
+
+    <h3 id="current-actions">The 5 actions wired up</h3>
+    <div class="card have">
+      <table>
+        <tr><th>Action</th><th>Purpose</th><th>Connector</th></tr>
+        <tr><td><code>CreateWarrantyClaim</code></td><td>Write claim record to Dataverse</td><td>Dataverse / custom flow</td></tr>
+        <tr><td><code>ExtractEntitiesfromEmailResponseV2</code></td><td>Parse email body → structured fields</td><td>Generative AI / entity extraction</td></tr>
+        <tr><td><code>Office365Outlook-SendanemailV2</code></td><td>Send "missing info" reply email to customer</td><td>Office 365 Outlook</td></tr>
+        <tr><td><code>Office365Outlook-SendanemailV2_T1N</code></td><td>Send confirmation email after claim created</td><td>Office 365 Outlook</td></tr>
+        <tr><td><code>MicrosoftTeams-Postcardinachatorchannel</code></td><td>Post adaptive card to Warranty Management Team channel</td><td>Microsoft Teams</td></tr>
+      </table>
+    </div>
+
+    <h3 id="current-knowledge">Knowledge sources (3)</h3>
+    <div class="card have">
+      <table>
+        <tr><th>Knowledge</th><th>What it covers</th><th>Customer-specific?</th></tr>
+        <tr><td><code>EmailActivities</code></td><td>Email activity history (Dataverse table)</td><td>Generic</td></tr>
+        <tr><td><code>milwaukeetool.com/...registrationandwarranty</code></td><td>Generic warranty terms (looks like a starter source from a Milwaukee Tools example)</td><td>⚠ Should be replaced with HKP/AMETEK-specific terms</td></tr>
+        <tr><td><code>Warranty_WarrantyClaim</code></td><td>cr74e_warrantyclaim table rows</td><td>Generic</td></tr>
+      </table>
+    </div>
+
+    <h3 id="current-topics">Topics (14 total — 13 stock + 1 custom)</h3>
+    <div class="card have">
+      <p>Most are Microsoft defaults (Greeting, Fallback, Escalate, Sign in, etc.). The single custom topic is:</p>
+      <ul>
+        <li><code>Getwarrantyackemailtemplate</code> — pulls the HTML email template from KB</li>
+      </ul>
+      <p>The bot doesn't need many topics because the instructions block does the orchestration.</p>
+    </div>
+
+    <h3 id="current-trigger">Trigger (1)</h3>
+    <div class="card have">
+      <ul>
+        <li><b>"When a new email arrives in a shared mailbox (V2)"</b> — Power Automate trigger, fires the agent on every inbound email.</li>
+      </ul>
+    </div>
+
+    <h3 id="current-flows">Power Automate flows in the wider solution (10)</h3>
+    <div class="card have">
+      <table>
+        <tr><th>Flow</th><th>State</th><th>Used by current bot?</th></tr>
+        <tr><td>CreateWarrantyClaim</td><td><span class="pill have">ON</span></td><td>✅ Yes (step 3)</td></tr>
+        <tr><td>When a new email arrives for a warranty claim</td><td><span class="pill have">ON</span></td><td>✅ Yes (trigger)</td></tr>
+        <tr><td>New Claims Notifications</td><td><span class="pill have">ON</span></td><td>~ Indirect</td></tr>
+        <tr><td>Customer Interaction Agent Flow</td><td><span class="pill have">ON</span></td><td>~ Indirect</td></tr>
+        <tr><td>Send Shipping Label</td><td><span class="pill have">ON</span></td><td>❌ Not yet — used in disposition step</td></tr>
+        <tr><td>When a Claim is added or modified</td><td><span class="pill have">ON</span></td><td>~ Indirect</td></tr>
+        <tr><td>Request Manager Approval for Claim</td><td><span class="pill have">ON</span></td><td>❌ Not yet — used in escalation</td></tr>
+        <tr><td>Capture each incoming and outgoing email</td><td><span class="pill partial">OFF</span></td><td>❌ Not yet — would log interactions</td></tr>
+        <tr><td>Claim Routing Automation</td><td><span class="pill partial">OFF</span></td><td>❌ Not yet — used in escalation</td></tr>
+        <tr><td>(One flow couldn't be fetched — likely deleted draft)</td><td>—</td><td>—</td></tr>
+      </table>
+      <div class="callout info">
+        <b>Big finding:</b> Most of the workflow plumbing for triage already exists. <b>2 of the 10 flows are deactivated</b> — Claim Routing Automation and Capture incoming/outgoing email. We'd activate these as part of Phase 2.
+      </div>
+    </div>
+
+    <!-- ========== THE GAP ========== -->
+    <h2 id="gap">3. What HKP RMA needs (the gap)</h2>
+
+    <div class="card gap">
+      <h3 id="gap-extend">Extend the agent's instructions block — 4 new steps</h3>
+      <p>After current step 5 (Teams card), add:</p>
+
+      <div style="margin-top:14px">
+        <p><span class="step-num gap">6</span><b>Look up warranty status</b> for the serial number. Returns: SKU, owner, shipped date, warranty end, in-warranty boolean, days remaining. <span class="pill gap">NEW ACTION needed</span></p>
+        <p><span class="step-num gap">7</span><b>Apply eligibility rules:</b>
+          <br>• In warranty + manufacturing-defect keyword → <code>eligible</code>
+          <br>• Out of warranty by &gt;90 days → <code>ineligible</code>
+          <br>• Borderline / EMI suspected / sparse description → <code>unclear</code>
+          <br>• Misuse keywords (water, impact, lightning, etc.) → <code>ineligible</code>
+        </p>
+        <p><span class="step-num gap">8</span><b>Recommend disposition</b> with confidence + rationale. One of: <code>approve_repair</code> / <code>approve_replace</code> / <code>approve_refund</code> / <code>reject</code> / <code>request_more_info</code> / <code>escalate_to_engineer</code>. Always include the supporting facts list.</p>
+        <p><span class="step-num gap">9</span><b>Branch on disposition:</b>
+          <br>• If <code>approve_replace</code> → trigger <code>Send Shipping Label</code> flow + send customer email
+          <br>• If <code>reject</code> → send customer rejection email with paid-repair quote offer
+          <br>• If <code>request_more_info</code> → send customer email asking for photos + error codes
+          <br>• If <code>escalate_to_engineer</code> → call new <code>RouteEscalation</code> action (assigns QE based on product family, posts evidence pack to engineer's Teams DM)
+          <br>• If confidence &lt; 0.70 → also trigger <code>Request Manager Approval for Claim</code> flow even on auto-decisions
+        </p>
+      </div>
+    </div>
+
+    <h3 id="gap-actions">New actions to add (2)</h3>
+    <div class="card gap">
+      <table>
+        <tr><th>Action</th><th>Purpose</th><th>How to build</th><th>Effort</th></tr>
+        <tr>
+          <td><code>LookupWarrantyBySerial</code></td>
+          <td>Serial → SKU + warranty end + in/out warranty + days remaining</td>
+          <td>Dataverse "Get a row" against <code>cr74e_productserial</code> joined with <code>msdyn_warranty</code>. Or wrap in a small PA flow.</td>
+          <td>~1 hour</td>
+        </tr>
+        <tr>
+          <td><code>RouteEscalation</code></td>
+          <td>Find the right Quality Engineer for a product family + post an evidence pack to their Teams DM</td>
+          <td>Power Automate flow that reads engineer roster (config table or env variable), looks up by product family, posts adaptive card to that engineer's Teams</td>
+          <td>~2 hours</td>
+        </tr>
+      </table>
+    </div>
+
+    <h3 id="gap-flows">Flows to activate (2 already in solution)</h3>
+    <div class="card partial">
+      <ul>
+        <li><b>Claim Routing Automation</b> — currently OFF. Used by step 9's escalation branch. Just turn it on after we wire it.</li>
+        <li><b>Capture each incoming and outgoing email</b> — currently OFF. Logs interactions to <code>cr74e_customerinteraction</code> for audit + future ML training. Activate after we test step-9 emails.</li>
+      </ul>
+    </div>
+
+    <h3 id="gap-config">Config + rules to add (per-customer overlay)</h3>
+    <div class="card gap">
+      <p>Per-customer config files live in <code>customers/{customer}/hkp_rma/config/</code> (already scaffolded for HKP). The agent's instructions reference these via Dataverse environment variables in production:</p>
+      <table>
+        <tr><th>Config file</th><th>Contains</th><th>Example (HKP today)</th></tr>
+        <tr><td>failure_modes.json</td><td>Defect-vs-misuse keyword lists</td><td>defect: "lead screw, encoder, bearing"<br>misuse: "water, impact, lightning"</td></tr>
+        <tr><td>product_families.json</td><td>SKU prefix → family + warranty months</td><td>iDEA-57: 24mo · iDEA-43: 18mo · iDEA-28: 12mo</td></tr>
+        <tr><td>oem_tiers.json</td><td>Account name → tier (1/2/3)</td><td>Andersen=1, Marvin=1, Pella=2, Velux=2</td></tr>
+        <tr><td>engineer_roster.json</td><td>Product family → QE + Teams ID</td><td>57mm → Sarah Chen<br>43mm → Marcus Rivera</td></tr>
+        <tr><td>eligibility_rules.json</td><td>Confidence thresholds, grace days, etc.</td><td>borderline_grace_days: 90<br>human_review_threshold: 0.70</td></tr>
+        <tr><td>email_templates.json</td><td>Per-disposition email bodies</td><td>approve_replace, reject, request_more_info, etc.</td></tr>
+      </table>
+      <div class="callout warn">
+        <b>Replace also:</b> The <code>milwaukeetool.com/...warranty</code> knowledge source with HKP's actual warranty-terms doc. Customer should provide.
+      </div>
+    </div>
+
+    <!-- ========== PLAN ========== -->
+    <h2 id="plan">4. Build plan (3 phases)</h2>
+
+    <div class="card plan">
+      <h3 id="plan-1">Phase 1 — Validate today (30 min)</h3>
+      <p>Goal: confirm the current bot still works end-to-end before we change anything.</p>
+      <ol>
+        <li>Send a test email to the bot's monitored inbox with a serial + problem description</li>
+        <li>Verify: bot extracts entities, replies if missing fields, creates the claim, sends confirmation, posts Teams card</li>
+        <li>Capture screenshot of: the email reply HTML, the Dataverse claim record, the Teams adaptive card</li>
+        <li>Status check via Power Automate run history — all 5 action calls succeed</li>
+      </ol>
+      <div class="callout good">
+        <b>Output:</b> 3 screenshots that go into the customer call as "here's the foundation we're building on."
+      </div>
+    </div>
+
+    <div class="card plan">
+      <h3 id="plan-2">Phase 2 — Extend the bot (~1 dev day)</h3>
+      <p>Goal: bot does intake-through-disposition end-to-end.</p>
+      <ol>
+        <li>Build the 2 new Power Automate flows: <code>LookupWarrantyBySerial</code> + <code>RouteEscalation</code> (~3 hours)</li>
+        <li>Add 4 instruction steps to <code>agent.mcs.yml</code> (steps 6-9 above)</li>
+        <li>Activate the 2 currently-OFF flows: <code>Claim Routing Automation</code> + <code>Capture each incoming and outgoing email</code></li>
+        <li>Add 6 customer-specific config JSON files under <code>customers/ametek/hkp_rma/config/</code></li>
+        <li>Push via VS Code Copilot Studio extension as <b>draft</b> (doesn't change live bot)</li>
+        <li>Test in CS test pane against 5 sample emails (mirror the HKP RMA tester's 5 scenarios)</li>
+        <li>If pass → Publish in CS UI</li>
+      </ol>
+      <div class="callout warn">
+        <b>Risk:</b> First push may fail with binding cache or schema strictness errors. See <code>/memories/power-platform-deploy.md</code> in the repo for the documented fixes (delete-and-readd Action node, etc.). Budget 1 hour for push iteration.
+      </div>
+    </div>
+
+    <div class="card plan">
+      <h3 id="plan-3">Phase 3 — Productionize (after Phase 2 demo passes)</h3>
+      <ol>
+        <li>Calibrate failure-mode keywords + disposition rationale to HKP vocabulary (from customer call notes)</li>
+        <li>Replace Milwaukee KB with HKP/AMETEK warranty terms doc</li>
+        <li>Replace mock engineer roster with real names + Teams IDs</li>
+        <li>Wire historical-context lookup (read closed claims for similar failures, append to disposition rationale)</li>
+        <li>Add acceptance test harness (~5 cases × 4 dispositions = 20 tests) running in CI on draft bot</li>
+        <li>Promote from Master CE Mfg → customer's actual env (or keep customer in Master CE if it's their env)</li>
+        <li>Hand off to admin team with runbook + rollback procedure</li>
+      </ol>
+    </div>
+
+    <!-- ========== GENERIC VS CUSTOMER ========== -->
+    <h2 id="generic">5. What's generic vs customer-specific (template strategy)</h2>
+
+    <div class="card plan">
+      <p>Pattern: keep <b>agent logic</b> generic, keep <b>config</b> customer-specific. This bot can serve any AMETEK division — or any manufacturer with a warranty/RMA pattern — by swapping config JSONs.</p>
+
+      <table>
+        <tr><th>Layer</th><th>What it is</th><th>Reusable?</th></tr>
+        <tr><td>Trigger</td><td>"Email arrives in shared mailbox"</td><td>✅ Generic</td></tr>
+        <tr><td>Entity extraction</td><td>Generative parse of email body</td><td>✅ Generic</td></tr>
+        <tr><td>Eligibility rules engine</td><td>Logic structure (in_warranty + defect kw → eligible)</td><td>✅ Generic logic, ⚙ keywords vary</td></tr>
+        <tr><td>Disposition decision tree</td><td>Branch logic (eligible → approve, etc.)</td><td>✅ Generic logic, ⚙ thresholds vary</td></tr>
+        <tr><td>Email reply generation</td><td>HTML templates for each disposition</td><td>✅ Generic structure, ⚙ brand voice varies</td></tr>
+        <tr><td>Teams + Outlook connectors</td><td>Use existing connections</td><td>✅ Generic</td></tr>
+        <tr><td>Failure mode keywords</td><td>"lead screw" vs "fuel injector" vs "valve"</td><td>❌ Customer-specific</td></tr>
+        <tr><td>Product family map</td><td>SKU prefix → warranty period</td><td>❌ Customer-specific</td></tr>
+        <tr><td>OEM tier map</td><td>Customer name → tier 1/2/3</td><td>❌ Customer-specific</td></tr>
+        <tr><td>Engineer roster</td><td>Real QE names + Teams IDs</td><td>❌ Customer-specific</td></tr>
+        <tr><td>Email template content</td><td>Brand voice, signatures, disclaimers</td><td>❌ Customer-specific</td></tr>
+        <tr><td>Knowledge sources</td><td>Warranty terms doc, prior claims history</td><td>❌ Customer-specific</td></tr>
+      </table>
+
+      <div class="callout frontier">
+        <b>The reusability story for leadership:</b> "Build it once for HKP. The same bot — with new JSON config — runs SFMS, runs another AMETEK division, runs a non-AMETEK manufacturer. The agent logic doesn't change; only the data calibration."
+      </div>
+    </div>
+
+    <!-- ========== RISKS ========== -->
+    <h2 id="risks">6. Risks &amp; mitigations</h2>
+
+    <div class="card plan">
+      <table>
+        <tr><th>Risk</th><th>Likelihood</th><th>Mitigation</th></tr>
+        <tr>
+          <td>Push to draft fails (binding cache, schema)</td>
+          <td>Medium</td>
+          <td>Already documented in <code>/memories/power-platform-deploy.md</code>. Budget 1 hr for first push. Have rollback (revert YAML, re-clone).</td>
+        </tr>
+        <tr>
+          <td>Customer's actual failure-mode list doesn't match generic keywords</td>
+          <td>High (expected)</td>
+          <td>This is the value of the customer call — capture verbatim. Update <code>failure_modes.json</code>. No agent change needed.</td>
+        </tr>
+        <tr>
+          <td>Customer doesn't have Teams team for engineer routing</td>
+          <td>Medium</td>
+          <td>Fall back to email-based escalation — replace Teams card with Outlook send to engineer's email. Same RouteEscalation flow, different output.</td>
+        </tr>
+        <tr>
+          <td>Eligibility rules need to deviate per OEM contract</td>
+          <td>High (expected)</td>
+          <td>Add OEM contract overlay to <code>eligibility_rules.json</code>. Rule lookup becomes: contract-specific → customer-specific → default.</td>
+        </tr>
+        <tr>
+          <td>Live bot in production gets disrupted during Phase 2</td>
+          <td>Low (push creates draft)</td>
+          <td>VS Code extension push always creates draft. Live bot keeps running until you Publish in CS UI. Test draft thoroughly first.</td>
+        </tr>
+        <tr>
+          <td>cr74e_productserial table doesn't have the data we need for warranty lookup</td>
+          <td>Medium</td>
+          <td>Check during Phase 1 validation. If sparse, populate via demo data or extend with a synthetic lookup that uses serial-number prefix → warranty months mapping.</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- ========== WHAT TO DO NEXT ========== -->
+    <h2 id="now">7. What to do next</h2>
+
+    <div class="card plan">
+      <h3>For tonight (~30 min)</h3>
+      <ol>
+        <li>Read this guide end-to-end. Use it as your discussion frame for tomorrow.</li>
+        <li>Open <code>customers/ametek/hkp_rma/ui/hkp_rma_prep_and_demo_guide.html</code> for the demo script.</li>
+        <li><b>Optional</b>: open the cloned <code>agent.mcs.yml</code> in VS Code and read the existing instructions block end-to-end so you can speak to it confidently.</li>
+      </ol>
+
+      <div class="copyable"><code>code "C:\Users\billwhalen\OneDrive - Microsoft\Documents\GitHub\RAPP\CommunityRAPP-main\copilotstudioclones\Warranty Claim Processing for Email\Warranty Claim Processing for Email\agent.mcs.yml"</code></div>
+
+      <h3>During tomorrow's call</h3>
+      <ol>
+        <li>Open the bot in Master CE Copilot Studio. Show the instructions block (the 5-step flow).</li>
+        <li>Switch to the HKP RMA tester (localhost:7071). Run scenarios 0412 + 0414. Show the triage logic working.</li>
+        <li>Come back to the bot, open <i>this</i> doc, scroll to <a href="#gap">Section 3 (the gap)</a>. Walk them through what we'd add.</li>
+        <li>Ask: <b>"Would you sign off on Phase 2 — 1 dev day to extend this bot with the 4 instruction steps + 2 actions, all as a draft, no production impact?"</b></li>
+      </ol>
+
+      <h3>After the call</h3>
+      <ol>
+        <li>Capture customer's failure-mode list, OEM tiers, real engineer names — drop into <code>customers/ametek/hkp_rma/config/</code></li>
+        <li>If they signed off → schedule Phase 2 build session</li>
+        <li>If they want to see more first → schedule a working session where we live-build one new action (LookupWarrantyBySerial) so they can see the extension pattern</li>
+      </ol>
+    </div>
+
+  </main>
+
+  <!-- RIGHT PANEL -->
+  <aside class="right">
+    <h3>By the numbers</h3>
+
+    <div class="summary">
+      <span class="num">5</span>
+      <span class="lbl">Actions wired today</span>
+    </div>
+    <div class="summary">
+      <span class="num">3</span>
+      <span class="lbl">Knowledge sources</span>
+    </div>
+    <div class="summary">
+      <span class="num">10</span>
+      <span class="lbl">PA flows in solution</span>
+    </div>
+    <div class="summary">
+      <span class="num">8</span>
+      <span class="lbl">Flows already activated</span>
+    </div>
+    <div class="summary">
+      <span class="num">2</span>
+      <span class="lbl">Flows to activate</span>
+    </div>
+    <div class="summary">
+      <span class="num">2</span>
+      <span class="lbl">New actions to build</span>
+    </div>
+    <div class="summary">
+      <span class="num">4</span>
+      <span class="lbl">Instruction steps to add</span>
+    </div>
+    <div class="summary">
+      <span class="num">~1</span>
+      <span class="lbl">Dev day for Phase 2</span>
+    </div>
+
+    <h3>Status legend</h3>
+    <div class="legend-row"><span class="dot good"></span><span><b>Have</b> — wired today</span></div>
+    <div class="legend-row"><span class="dot warn"></span><span><b>Partial</b> — exists but inactive</span></div>
+    <div class="legend-row"><span class="dot bad"></span><span><b>Gap</b> — to be built</span></div>
+    <div class="legend-row"><span class="dot plan"></span><span><b>Plan</b> — proposed</span></div>
+
+    <h3>Bot identifiers</h3>
+    <div class="summary" style="font-family:monospace;font-size:11px">
+      <p style="margin:0">Bot ID</p>
+      <p style="margin:2px 0 8px;color:var(--text);font-size:11.5px">5e16b1a5-ab89-f011-b4cc-7c1e525a3c6b</p>
+      <p style="margin:0">Schema</p>
+      <p style="margin:2px 0 8px;color:var(--text);font-size:11.5px">cra1f_warrantyClaim<br>ProcessingForEmail</p>
+      <p style="margin:0">Env URL</p>
+      <p style="margin:2px 0 8px;color:var(--text);font-size:11.5px">orgecbce8ef.crm<br>.dynamics.com</p>
+    </div>
+
+    <h3>Phase 2 net-add</h3>
+    <div class="summary">
+      <p style="margin:4px 0">+ 4 instruction steps</p>
+      <p style="margin:4px 0">+ 2 PA flow actions</p>
+      <p style="margin:4px 0">+ 6 customer config JSONs</p>
+      <p style="margin:4px 0">activate 2 PA flows</p>
+      <p style="margin:4px 0">replace 1 KB source</p>
+    </div>
+
+    <h3>Reusability</h3>
+    <div class="summary">
+      <p style="margin:4px 0">✅ Logic = generic</p>
+      <p style="margin:4px 0">⚙ Config = per-customer</p>
+      <p style="margin:4px 0">→ 1 bot serves N customers</p>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+document.querySelectorAll('.copyable').forEach(el => {
+  if (el.querySelector('.copy-btn')) return;
+  const btn = document.createElement('button');
+  btn.className = 'copy-btn';
+  btn.textContent = '📋 Copy';
+  btn.onclick = () => {
+    const code = el.querySelector('code')?.textContent || '';
+    navigator.clipboard.writeText(code).then(() => {
+      btn.textContent = '✅ Copied!';
+      setTimeout(() => { btn.textContent = '📋 Copy'; }, 2000);
+    });
+  };
+  el.appendChild(btn);
+});
+</script>
+</body>
+</html>

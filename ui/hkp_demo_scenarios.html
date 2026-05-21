@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HKP RMA Demo — Email Scenarios</title>
+<style>
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    margin: 0; padding: 24px;
+    background: #f4f6f9;
+    line-height: 1.5;
+  }
+  h1 { color: #003a70; border-bottom: 3px solid #f7a813; padding-bottom: 8px; }
+  h2 { color: #003a70; margin-top: 40px; }
+  .scenario {
+    background: white;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin: 24px 0;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  }
+  .scenario h2 {
+    margin-top: 0;
+  }
+  .meta {
+    background: #f1f3f4;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  .meta strong { color: #003a70; }
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-right: 6px;
+  }
+  .b-tier-1 { background: #e6f4ea; color: #137333; }
+  .b-tier-2 { background: #fef7e0; color: #ea8600; }
+  .b-tier-3 { background: #f1f3f4; color: #5f6368; }
+  .b-eligible { background: #d4edda; color: #155724; }
+  .b-ineligible { background: #f8d7da; color: #721c24; }
+  .b-unclear { background: #fff3cd; color: #856404; }
+  .email-box {
+    background: #ffffff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 16px;
+    font-family: 'Consolas', monospace;
+    font-size: 13px;
+    white-space: pre-wrap;
+    margin-top: 12px;
+    position: relative;
+  }
+  .copy-btn {
+    position: absolute;
+    top: 12px; right: 12px;
+    background: #003a70; color: white;
+    border: 0; padding: 6px 12px;
+    border-radius: 4px; cursor: pointer;
+    font-size: 12px; font-weight: 600;
+  }
+  .copy-btn:hover { background: #f7a813; color: #003a70; }
+  .expected {
+    background: #e7f1ff;
+    border-left: 4px solid #003a70;
+    padding: 12px 16px;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  .expected strong { color: #003a70; }
+  .toc {
+    background: white;
+    padding: 16px 20px;
+    border-radius: 6px;
+    margin: 24px 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+  .toc a { color: #003a70; text-decoration: none; font-weight: 600; }
+  .toc a:hover { color: #f7a813; }
+  .ops {
+    background: #fff8dc;
+    border-left: 4px solid #f7a813;
+    padding: 12px 16px;
+    margin: 24px 0;
+    font-size: 14px;
+  }
+  code {
+    background: #f1f3f4;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Consolas', monospace;
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+
+<h1>HKP RMA Demo — Email Scenarios</h1>
+
+<div class="ops">
+<strong>How to demo:</strong>
+<ol style="margin: 8px 0;">
+  <li>Open Gmail (signed in as <code>williamjaywhalen81@gmail.com</code>)</li>
+  <li>Compose a new email <strong>TO</strong> <code>rmarequest@D365DemoTSCE30330346.onmicrosoft.com</code></li>
+  <li>Copy the Subject + Body for the scenario you want to demo</li>
+  <li>Send it. Wait 60–90 seconds (1-min trigger poll + agent processing)</li>
+  <li>Check Gmail inbox for the agent's reply. Check Power Automate run history if needed.</li>
+  <li>Open Outlook → <code>rmarequest@</code> mailbox to show the email landed there too</li>
+</ol>
+</div>
+
+<div class="toc">
+<strong>Scenarios:</strong><br>
+<a href="#s1">1 — Andersen / Lead screw / IN warranty → APPROVE_REPLACE</a><br>
+<a href="#s2">2 — Pella / Out of warranty (2+ years past) → REJECT + paid quote</a><br>
+<a href="#s3">3 — Marvin / Borderline + EMI → ESCALATE_TO_ENGINEER</a><br>
+<a href="#s4">4 — Acme distributor / Water damage → REJECT (misuse)</a><br>
+<a href="#s5">5 — Andersen / Repeat claim → APPROVE_REPLACE w/ Manager Approval</a>
+</div>
+
+<!-- ============================================================ -->
+<div class="scenario" id="s1">
+<h2>Scenario 1 — Andersen lead screw failure (in warranty, clear defect)</h2>
+
+<div class="meta">
+<span class="badge b-tier-1">TIER 1</span>
+<span class="badge b-eligible">EXPECTED: APPROVE_REPLACE</span>
+<br><br>
+<strong>Serial:</strong> <code>IDEA-57-2025-104872</code> (in warranty, 18 mo remaining) ·
+<strong>Failure mode:</strong> lead screw / thread shear (manufacturing defect keyword) ·
+<strong>OEM:</strong> Andersen Windows OEM ·
+<strong>Cost:</strong> $4,200 (under $7,500 Tier 1 cap)
+</div>
+
+<h3>Subject:</h3>
+<div class="email-box">Lead screw stripped after 6 months — RMA request<button class="copy-btn" onclick="copyText(this)">Copy</button></div>
+
+<h3>Body:</h3>
+<div class="email-box">Hi,
+
+Customer reports premature lead-screw failure on iDEA 57mm actuator (serial IDEA-57-2025-104872) at 6 months in service. Unit installed in vertical sliding window, normal duty cycle. Photo attached shows clear thread shear. Original PO #PO-AND-2025-0814.
+
+Regards,
+Sarah
+Andersen Windows<button class="copy-btn" onclick="copyText(this)">Copy</button></div>
+
+<div class="expected">
+<strong>What the agent should do:</strong> Extract entities → match Tier 1 (andersenwindows) → look up serial → confirm in warranty → match "lead screw" + "thread shear" defect keywords → recommend <span class="badge b-eligible">approve_replace</span> with confidence ~0.97 (0.92 base + 0.05 Tier 1 boost) → email Sarah with shipping label info → create cr74e_warrantyclaim record → post Teams notification.
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="scenario" id="s2">
+<h2>Scenario 2 — Pella, well past warranty</h2>
+
+<div class="meta">
+<span class="badge b-tier-2">TIER 2</span>
+<span class="badge b-ineligible">EXPECTED: REJECT + offer paid quote</span>
+<br><br>
+<strong>Serial:</strong> <code>IDEA-43-2022-087221</code> (out of warranty 720 days) ·
+<strong>Failure mode:</strong> bearing failure (defect, but moot — out of warranty) ·
+<strong>OEM:</strong> Pella Corporation
+</div>
+
+<h3>Subject:</h3>
+<div class="email-box">RMA request - bearing failure on iDEA-43 unit<button class="copy-btn" onclick="copyText(this)">Copy</button></div>
+
+<h3>Body:</h3>
+<div class="email-box">Hello,
+
+We have a customer with bearing failure on an iDEA 43mm actuator, serial IDEA-43-2022-087221. The unit has been in service for almost 4 years on a tilt-and-turn window installation. Customer is asking about warranty coverage. PO was PO-PEL-2022-1144.
+
+Thanks,
+Mike
+Pella Corporation<button class="copy-btn" onclick="copyText(this)">Copy</button></div>
+
+<div class="expected">
+<strong>What the agent should do:</strong> Extract entities → match Tier 2 (pella.com) → look up serial → confirm <strong>720 days past warranty</strong> (more than 90-day grace) → recommend <span class="badge b-ineligible">reject</span> with confidence 0.92 → email Mike politely declining warranty coverage AND offering a paid-repair quote → create cr74e_warrantyclaim record (Status: Rejected - Out of Warranty) → no Teams escalation needed.
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="scenario" id="s3">
+<h2>Scenario 3 — Marvin borderline + EMI suspected (engineer escalation)</h2>
+
+<div class="meta">
+<span class="badge b-tier-1">TIER 1</span>
+<span class="badge b-unclear">EXPECTED: ESCALATE_TO_ENGINEER</span>
+<br><br>
+<strong>Serial:</strong> <code>IDEA-35-2024-093311</code> (60 days past warranty, within 90-day grace) ·
+<strong>Failure mode:</strong> "neighbouring drive", VFD interference (installation environment) ·
+<strong>OEM:</strong> Marvin Holdings ·
+<strong>Engineer:</strong> Maya Patel (Mid Frame Series)
+</div>
+
+<h3>Subject:</h3>
+<div class="email-box">Intermittent stalling on iDEA-35, possible drive interference<button class="copy-btn" onclick="copyText(this)">Copy</button></div>
+
+<h3>Body:</h3>
+<div class="email-box">Hi team,
+
+We are seeing intermittent stalling on an iDEA 35mm Compact actuator, serial IDEA-35-2024-093311. Unit was installed two months ago in an industrial bay alongside a 75kW VFD running a neighbouring drive. We suspect EMI interference but need an engineer to confirm. The unit is just slightly out of warranty by our records but it's a known good install on a long-running Marvin program. PO PO-MAR-2024-0512.
+
+Could someone from your engineering team take a look at the diagnostic logs?
+
+Regards,
+James
+Marvin Holdings - Industrial Division<button class="copy-btn" onclick="copyText(this)">Copy</button></div>
+
+<div class="expected">
+<strong>What the agent should do:</strong> Extract entities → match Tier 1 (marvin.com) → look up serial → confirm <strong>60 days past warranty</strong> (borderline, within 90-day grace) → match "VFD" + "neighbouring drive" + "EMI" environmental keywords → recommend <span class="badge b-unclear">escalate_to_engineer</span> with confidence ~0.45 → assign to <strong>Maya Patel (Mid Frame Series)</strong> via Teams DM with evidence pack → reply to James "Your RMA is under engineering review, response within 2 business hours per Tier 1 SLA" → create cr74e_warrantyclaim record (Status: Pending Engineer Review).
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="scenario" id="s4">
+<h2>Scenario 4 — Acme distributor / water damage (misuse)</h2>
+
+<div class="meta">
+<span class="badge b-tier-3">TIER 3</span>
+<span class="badge b-ineligible">EXPECTED: REJECT (misuse)</span>
+<br><br>
+<strong>Serial:</strong> <code>IDEA-28-2025-201155</code> (in warranty, 9 mo remaining) ·
+<strong>Failure mode:</strong> water damage (misuse keyword — overrides everything) ·
+<strong>OEM:</strong> Acme Window Distribution
+</div>
+
+<h3>Subject:</h3>
+<div class="email-box">Customer claim — iDEA-28 stopped working after install<button class="copy-btn" onclick="copyText(this)">Copy</button></div>
+
+<h3>Body:</h3>
+<div class="email-box">Hello,
+
+One of our customers is reporting their iDEA 28mm actuator stopped working a month after install. They mentioned the install location got hit with significant water damage during a storm — there was standing water in the cabinet for several days before they found it. They want a replacement under warranty since the unit is under a year old.
+
+Serial: IDEA-28-2025-201155
+Original PO: PO-ACME-2025-2200
+Customer name: Bob Stevens
+
+Please advise on next steps.
+
+Thanks,
+Priya
+Acme Window Distribution<button class="copy-btn" onclick="copyText(this)">Copy</button></div>
+
+<div class="expected">
+<strong>What the agent should do:</strong> Extract entities → match Tier 3 (no domain match → distributor default) → look up serial → confirm in warranty → BUT detect "water damage" + "standing water" misuse keywords → <span class="badge b-ineligible">reject</span> with confidence 0.95 → email Priya politely declining (warranty exclusion under HKP terms — water damage), offer paid-repair quote → create cr74e_warrantyclaim record (Status: Rejected - Misuse). The fact that it's IN warranty is irrelevant — misuse is rule #1 and overrides.
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="scenario" id="s5">
+<h2>Scenario 5 — Andersen repeat claim (manager approval)</h2>
+
+<div class="meta">
+<span class="badge b-tier-1">TIER 1</span>
+<span class="badge b-eligible">EXPECTED: APPROVE_REPLACE w/ Manager Approval</span>
+<br><br>
+<strong>Serial:</strong> <code>IDEA-57-2025-104880</code> (in warranty) ·
+<strong>Failure mode:</strong> lead screw thread shear (eligible — defect) ·
+<strong>OEM:</strong> Andersen Windows OEM ·
+<strong>Trigger:</strong> 3rd RMA from Andersen on iDEA-57 in 60 days = quality alert
+</div>
+
+<h3>Subject:</h3>
+<div class="email-box">Yet another iDEA-57 lead screw failure — RMA request<button class="copy-btn" onclick="copyText(this)">Copy</button></div>
+
+<h3>Body:</h3>
+<div class="email-box">Hi all,
+
+We're seeing the same lead-screw failure pattern again on iDEA 57mm units. This is the third RMA we've filed this quarter for the same SKU and same failure mode (premature thread shear on lead screw). Serial IDEA-57-2025-104880, installed 4 months ago, normal duty cycle. PO PO-AND-2025-0820.
+
+Can you escalate this internally? We're starting to worry about a batch issue. Customer is asking for replacement plus we'd like a root-cause investigation.
+
+Regards,
+Sarah
+Andersen Windows OEM<button class="copy-btn" onclick="copyText(this)">Copy</button></div>
+
+<div class="expected">
+<strong>What the agent should do:</strong> Extract entities → match Tier 1 (andersenwindows) → look up serial → confirm in warranty → match "lead screw" + "thread shear" defect keywords → would normally be <span class="badge b-eligible">approve_replace</span> at 0.92+0.05=0.97 confidence → BUT detect repeat-claim pattern in supportingFacts → apply <strong>−0.10 confidence penalty</strong> bringing to 0.87 → still above 0.70 floor BUT cost is $4,200 which is under Tier 1 cap of $7,500 (no auto-cap trigger here BUT message references "third RMA this quarter" — agent should flag this as a quality signal, set <code>requiresManagerApproval = true</code>, route through approval flow, AND notify QA team via Teams) → after approval, send replace email and create claim with humanReviewRequired=true.
+</div>
+</div>
+
+<div class="ops">
+<strong>If something goes sideways during the demo:</strong>
+<ul>
+<li>Falls back to <code>customers/ametek/hkp_rma/ui/hkp_rma_tester.html</code> — the local 6-agent tester at <code>localhost:7071/api/businessinsightbot_function</code></li>
+<li>Or pivot to walking through <code>hkp_rules_cookbook.html</code> as the talk-track and skip live demo</li>
+<li>Power Automate run history: https://make.powerautomate.com/environments/a3140474-230b-ee2b-8dd8-605a8fe08913/flows</li>
+</ul>
+</div>
+
+<script>
+function copyText(btn) {
+  const box = btn.parentElement;
+  const text = box.innerText.replace(/Copy$/, '').trim();
+  navigator.clipboard.writeText(text).then(() => {
+    btn.innerText = '✓ Copied';
+    setTimeout(() => btn.innerText = 'Copy', 1500);
+  });
+}
+</script>
+
+</body>
+</html>

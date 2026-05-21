@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RMA Returns Monitor — Setup Guide</title>
+<style>
+  :root {
+    --primary:    #003a70;
+    --accent:     #f7a813;
+    --grey:       #4a4a4a;
+    --light-grey: #888;
+    --good:       #137333;
+    --warn:       #ea8600;
+    --bad:        #c5221f;
+    --bg:         #ffffff;
+    --soft-bg:    #f7f8fb;
+    --border:     #e3e7ee;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', -apple-system, system-ui, sans-serif;
+    margin: 0; padding: 40px 56px;
+    color: #222;
+    line-height: 1.55;
+    font-size: 11pt;
+    background: white;
+    max-width: 8.5in;
+    margin: 0 auto;
+  }
+  h1 {
+    color: var(--primary);
+    font-size: 26pt;
+    margin: 0 0 4px;
+  }
+  h1 + .subtitle {
+    color: var(--grey);
+    font-size: 12pt;
+    margin: 0 0 6px;
+    font-style: italic;
+  }
+  .meta {
+    color: var(--light-grey);
+    font-size: 9.5pt;
+    border-bottom: 3px solid var(--accent);
+    padding-bottom: 12px;
+    margin-bottom: 24px;
+  }
+  h2 {
+    color: var(--primary);
+    border-left: 5px solid var(--accent);
+    padding: 6px 14px;
+    background: linear-gradient(90deg, rgba(0,58,112,.05) 0%, transparent 100%);
+    font-size: 16pt;
+    margin: 32px 0 12px;
+    page-break-after: avoid;
+  }
+  h3 {
+    color: var(--primary);
+    font-size: 12pt;
+    margin: 22px 0 8px;
+    page-break-after: avoid;
+  }
+  p { margin: 8px 0; }
+  ol, ul { padding-left: 22px; }
+  li { margin: 4px 0; }
+
+  .step {
+    background: var(--soft-bg);
+    border-left: 4px solid var(--primary);
+    border-radius: 4px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    page-break-inside: avoid;
+  }
+  .step-number {
+    display: inline-block;
+    width: 24px; height: 24px;
+    background: var(--primary);
+    color: white;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 24px;
+    font-weight: 700;
+    font-size: 10pt;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  .step h3 { margin-top: 0; display: inline; vertical-align: middle; color: var(--primary); }
+
+  code, .mono {
+    background: #f1f3f4;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 9.5pt;
+    color: #c5221f;
+  }
+  pre {
+    background: #f1f3f4;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px 14px;
+    font-family: 'Consolas', monospace;
+    font-size: 9.5pt;
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0;
+    font-size: 10pt;
+    page-break-inside: avoid;
+  }
+  th, td {
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  th {
+    background: var(--primary);
+    color: white;
+    font-weight: 600;
+    font-size: 9.5pt;
+    text-transform: uppercase;
+    letter-spacing: .3px;
+  }
+  tr:nth-child(even) td { background: var(--soft-bg); }
+
+  .callout {
+    border-left: 4px solid;
+    border-radius: 4px;
+    padding: 12px 16px;
+    margin: 14px 0;
+    page-break-inside: avoid;
+    font-size: 10.5pt;
+  }
+  .callout.info  { background: #e7f1ff; border-color: var(--primary); }
+  .callout.warn  { background: #fef7e0; border-color: var(--warn); }
+  .callout.good  { background: #e6f4ea; border-color: var(--good); }
+  .callout.danger{ background: #fce8e6; border-color: var(--bad); }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 12px;
+    font-size: 9pt;
+    font-weight: 600;
+    margin-right: 4px;
+  }
+  .b-good { background: #e6f4ea; color: var(--good); }
+  .b-warn { background: #fef7e0; color: var(--warn); }
+  .b-info { background: #e7f1ff; color: var(--primary); }
+
+  .footer {
+    margin-top: 48px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-size: 9pt;
+    color: var(--light-grey);
+  }
+
+  @media print {
+    body { padding: 0.5in 0.75in; max-width: none; font-size: 10.5pt; }
+    h1 { font-size: 22pt; }
+    h2 { font-size: 14pt; }
+    h3 { font-size: 11.5pt; }
+    .step, .callout, table { page-break-inside: avoid; }
+    a { color: inherit; text-decoration: none; }
+  }
+
+  .toc {
+    background: var(--soft-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 22px;
+    margin: 16px 0 24px;
+    page-break-inside: avoid;
+  }
+  .toc h3 { margin-top: 0; color: var(--primary); }
+  .toc ol { margin: 6px 0; }
+  .toc a { color: var(--primary); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<h1>RMA Returns Monitor</h1>
+<p class="subtitle">Customer Setup &amp; Installation Guide</p>
+<p class="meta">
+  <strong>Solution package:</strong> RMAReturnsMonitor_1_0_0_2.zip &nbsp;·&nbsp;
+  <strong>Version:</strong> 1.0.0.2 &nbsp;·&nbsp;
+  <strong>Type:</strong> Unmanaged &nbsp;·&nbsp;
+  <strong>Prepared by:</strong> Microsoft Solution Engineering
+</p>
+
+<div class="toc">
+  <h3>What's in this guide</h3>
+  <ol>
+    <li>What you're getting</li>
+    <li>Before you start (prerequisites)</li>
+    <li>Installation — step by step</li>
+    <li>First-run setup &amp; configuration</li>
+    <li>Using the app</li>
+    <li>Troubleshooting</li>
+    <li>Support &amp; next steps</li>
+  </ol>
+</div>
+
+<h2>1. What you're getting</h2>
+
+<p>The <strong>RMA Returns Monitor</strong> is a self-contained Power Apps Canvas application designed to streamline your Return Material Authorization (RMA) intake and triage workflow. It captures inbound RMA requests from customers, routes them to the right manufacturing plant, and tracks them through the full claim lifecycle.</p>
+
+<h3>Components inside the package</h3>
+<table>
+  <thead>
+    <tr><th>Component</th><th>Type</th><th>Purpose</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>RMA Returns Monitor</strong></td><td>Canvas App</td><td>The main user interface for managing returns</td></tr>
+    <tr><td><strong>RMA Claim</strong></td><td>Dataverse Table</td><td>Master record for each return request</td></tr>
+    <tr><td><strong>Plant</strong></td><td>Dataverse Table</td><td>Manufacturing locations that process returns</td></tr>
+    <tr><td><strong>Routing Rule</strong></td><td>Dataverse Table</td><td>Configurable plant assignment logic</td></tr>
+    <tr><td><strong>Claim Note</strong></td><td>Dataverse Table</td><td>Investigation history &amp; activity log</td></tr>
+    <tr><td><strong>Approval Record</strong></td><td>Dataverse Table</td><td>Audit trail for credits exceeding thresholds</td></tr>
+  </tbody>
+</table>
+
+<div class="callout info">
+  <strong>Self-contained design:</strong> This solution does <strong>not</strong> require Microsoft Field Service, Customer Service, or any other Dataverse application. All required tables are included.
+</div>
+
+<h2>2. Before you start</h2>
+
+<h3>Prerequisites</h3>
+<table>
+  <thead>
+    <tr><th>Requirement</th><th>Details</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Power Platform environment</strong></td>
+      <td>A target environment with Dataverse enabled. You'll need <strong>System Administrator</strong> or <strong>System Customizer</strong> role to import.</td>
+    </tr>
+    <tr>
+      <td><strong>Microsoft 365 account</strong></td>
+      <td>For the user signing in to set up connections during import.</td>
+    </tr>
+    <tr>
+      <td><strong>Premium Power Apps license</strong></td>
+      <td>The app uses the <strong>Microsoft MCP Servers</strong> connector (Premium tier). Each user who runs the app needs one of:
+        <ul style="margin:6px 0">
+          <li>Power Apps Premium license (~$20/user/month), OR</li>
+          <li>Dynamics 365 license that includes premium connectors, OR</li>
+          <li>A per-app license attached to this app</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Browser</strong></td>
+      <td>Microsoft Edge or Google Chrome (latest version recommended)</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>What you'll need handy</h3>
+<ul>
+  <li>The solution file: <code>RMAReturnsMonitor_1_0_0_2.zip</code></li>
+  <li>This guide</li>
+  <li>~10 minutes</li>
+</ul>
+
+<h2>3. Installation — step by step</h2>
+
+<div class="step">
+  <span class="step-number">1</span><h3>Sign in to Power Apps</h3>
+  <ol>
+    <li>Open <a href="https://make.powerapps.com">https://make.powerapps.com</a> in your browser</li>
+    <li>Sign in with your work account</li>
+    <li>In the top-right environment picker, <strong>switch to the target environment</strong> where you want the app installed</li>
+  </ol>
+</div>
+
+<div class="step">
+  <span class="step-number">2</span><h3>Open the Solutions area</h3>
+  <ol>
+    <li>In the left navigation, click <strong>Solutions</strong></li>
+    <li>If you don't see Solutions, click <strong>... More</strong> first to expand the menu</li>
+  </ol>
+</div>
+
+<div class="step">
+  <span class="step-number">3</span><h3>Import the solution package</h3>
+  <ol>
+    <li>Click <strong>Import solution</strong> in the top toolbar</li>
+    <li>Click <strong>Browse</strong> and select <code>RMAReturnsMonitor_1_0_0_2.zip</code></li>
+    <li>Click <strong>Next</strong> — Power Apps validates the package (~10 seconds)</li>
+    <li>Review the solution information shown (RMAReturnsMonitor v1.0.0.2)</li>
+    <li>Click <strong>Next</strong></li>
+  </ol>
+</div>
+
+<div class="step">
+  <span class="step-number">4</span><h3>Set up the connection</h3>
+  <ol>
+    <li>You'll see a prompt asking for the <strong>Microsoft MCP Servers</strong> connection</li>
+    <li>Click <strong>+ New connection</strong> next to it</li>
+    <li>A new tab opens — sign in with your Microsoft 365 account</li>
+    <li>Once authenticated, close that tab and return to the import wizard</li>
+    <li>Click the refresh icon next to the connection dropdown</li>
+    <li>Select your newly created connection</li>
+  </ol>
+  <div class="callout warn">
+    <strong>Don't see "Microsoft MCP Servers"?</strong> Your tenant may not have premium connectors enabled. Contact your Power Platform admin or licensing team — see Section 7 for help.
+  </div>
+</div>
+
+<div class="step">
+  <span class="step-number">5</span><h3>Complete the import</h3>
+  <ol>
+    <li>Click <strong>Next</strong></li>
+    <li>Click <strong>Import</strong></li>
+    <li>Wait approximately 1–3 minutes — Power Apps creates the 5 tables and installs the app</li>
+    <li>You'll see "Solution imported successfully" when complete</li>
+  </ol>
+</div>
+
+<div class="step">
+  <span class="step-number">6</span><h3>Verify the install</h3>
+  <ol>
+    <li>Click into the <strong>RMA Returns Monitor</strong> solution</li>
+    <li>Confirm you see 6 components: 5 tables + 1 Canvas App</li>
+    <li>Click <strong>Apps</strong> in the left filter</li>
+    <li>You should see <strong>RMA Returns Monitor</strong> listed</li>
+  </ol>
+  <div class="callout good">
+    <strong>Installation complete!</strong> Continue to Section 4 for first-run configuration.
+  </div>
+</div>
+
+<h2>4. First-run setup &amp; configuration</h2>
+
+<p>Before users can effectively use the app, configure your plants and routing rules. This takes about 10–15 minutes.</p>
+
+<h3>Step 1 — Add your manufacturing plants</h3>
+<ol>
+  <li>In the solution, click into the <strong>Plant</strong> table</li>
+  <li>Click <strong>+ New row</strong></li>
+  <li>Fill in for each plant:
+    <ul>
+      <li><strong>Name</strong> — e.g. "Detroit Manufacturing"</li>
+      <li><strong>Region</strong> — North America / Latin America / Asia Pacific</li>
+      <li><strong>Part Prefixes</strong> — comma-separated list of part-number prefixes this plant handles (e.g. "BR,BN")</li>
+      <li><strong>Product Lines</strong> — comma-separated list of product line names</li>
+      <li><strong>Auto Credit Threshold</strong> — dollar amount above which manager approval is required (e.g. 5000)</li>
+    </ul>
+  </li>
+  <li>Click <strong>Save</strong></li>
+  <li>Repeat for each plant in your network</li>
+</ol>
+
+<h3>Step 2 — Add routing rules</h3>
+<ol>
+  <li>In the solution, click into the <strong>Routing Rule</strong> table</li>
+  <li>Click <strong>+ New row</strong></li>
+  <li>Fill in:
+    <ul>
+      <li><strong>Rule Name</strong> — descriptive name (e.g. "BR-prefix → Detroit")</li>
+      <li><strong>Rule Type</strong> — Part Prefix / Customer Region / Product Line</li>
+      <li><strong>Match Value</strong> — the value to match (e.g. "BR" for the rule above)</li>
+      <li><strong>Assigned Plant</strong> — pick the plant this rule routes to</li>
+      <li><strong>Priority</strong> — lower numbers evaluate first (e.g. 10, 20, 30)</li>
+      <li><strong>Is Active</strong> — Yes</li>
+    </ul>
+  </li>
+  <li>Click <strong>Save</strong></li>
+  <li>Add as many rules as needed to cover your routing scenarios</li>
+</ol>
+
+<h3>Step 3 — Share the app with your team</h3>
+<ol>
+  <li>In the solution, locate the <strong>RMA Returns Monitor</strong> app</li>
+  <li>Click the <strong>...</strong> menu &rarr; <strong>Share</strong></li>
+  <li>Add users or security groups</li>
+  <li>Pick the appropriate permission level:
+    <ul>
+      <li><strong>Co-owner</strong> — for admins (rare; usually just you)</li>
+      <li><strong>User</strong> — for everyday RMA processors</li>
+    </ul>
+  </li>
+  <li>Optional: Send an email notification with the app link</li>
+</ol>
+
+<div class="callout info">
+  <strong>Security note:</strong> When sharing the app, also configure data permissions on the underlying tables. Each user needs at least <strong>Read/Write</strong> on the 5 RMA tables. Use Dataverse security roles to manage this.
+</div>
+
+<h2>5. Using the app</h2>
+
+<h3>Launching the app</h3>
+<ol>
+  <li>Go to <a href="https://make.powerapps.com">https://make.powerapps.com</a> &rarr; <strong>Apps</strong></li>
+  <li>Click <strong>RMA Returns Monitor</strong></li>
+  <li>The app opens in a new tab</li>
+</ol>
+
+<h3>Typical workflow</h3>
+<table>
+  <thead>
+    <tr><th>Stage</th><th>What happens</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Intake</strong></td><td>An RMA request comes in (email, web form, or direct entry). User creates a new claim in the app.</td></tr>
+    <tr><td><strong>Triage</strong></td><td>App suggests a plant assignment based on routing rules. User confirms or overrides.</td></tr>
+    <tr><td><strong>Investigation</strong></td><td>User adds Claim Notes documenting findings. Verifies warranty status.</td></tr>
+    <tr><td><strong>Decision</strong></td><td>User sets Resolution (Credit Issued / Replacement / Repair / Denied). If credit exceeds plant threshold, an Approval Record is created.</td></tr>
+    <tr><td><strong>Closed</strong></td><td>User updates Status to "Closed" with Closed Date.</td></tr>
+  </tbody>
+</table>
+
+<h2>6. Troubleshooting</h2>
+
+<table>
+  <thead>
+    <tr><th>Issue</th><th>Cause</th><th>Solution</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Import fails with "missing publisher"</td>
+      <td>Solution file corrupted in transit</td>
+      <td>Re-download the .zip and try again</td>
+    </tr>
+    <tr>
+      <td>"Microsoft MCP Servers" connector not available</td>
+      <td>Premium connectors not enabled in tenant</td>
+      <td>Contact your Power Platform admin to verify licensing</td>
+    </tr>
+    <tr>
+      <td>App opens but tables show "no records"</td>
+      <td>Empty tables on first install (expected)</td>
+      <td>Add data via Section 4 setup, or import sample data</td>
+    </tr>
+    <tr>
+      <td>"You don't have permission to access this data"</td>
+      <td>User missing Dataverse table permissions</td>
+      <td>Assign appropriate security role with read/write on rma_* tables</td>
+    </tr>
+    <tr>
+      <td>Routing not assigning correctly</td>
+      <td>Routing rules misconfigured or inactive</td>
+      <td>Review the Routing Rule table — confirm Is Active = Yes and Priority order is correct</td>
+    </tr>
+    <tr>
+      <td>"License required" prompt when running app</td>
+      <td>User missing Power Apps Premium license</td>
+      <td>Assign per-user or per-app premium license to the user</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>7. Support &amp; next steps</h2>
+
+<h3>Need help?</h3>
+<p>For installation or configuration issues, contact your Microsoft account team. Reference this solution as <strong>RMAReturnsMonitor v1.0.0.2</strong>.</p>
+
+<h3>Recommended next steps</h3>
+<ol>
+  <li><strong>Pilot the app</strong> with 2–3 users for 1–2 weeks to validate the workflow against your real RMA volume.</li>
+  <li><strong>Capture feedback</strong> on missing fields, additional rule types, or report needs — share in your follow-up call.</li>
+  <li><strong>Plan integration</strong> — common follow-on enhancements include:
+    <ul>
+      <li>Auto-create RMAs from inbound emails (Power Automate flow)</li>
+      <li>Customer-facing web form that posts directly to the RMA Claim table</li>
+      <li>Auto-triage AI agent that classifies eligibility and drafts replies</li>
+      <li>Status notification emails to customers as their claim progresses</li>
+      <li>Power BI dashboard for cycle-time and disposition reporting</li>
+    </ul>
+  </li>
+</ol>
+
+<h3>About the design</h3>
+<p>This app was built collaboratively in Power Apps Studio (Vibe code mode) and uses 5 custom Dataverse tables specifically designed for return management — no Field Service or other prerequisites required. The schema is documented in the solution and can be extended by your team using the standard Power Platform tools.</p>
+
+<div class="callout good">
+  <strong>You own this solution.</strong> Because it's distributed as <em>unmanaged</em>, your team can extend tables, modify the app, and add new features as your RMA process evolves. We recommend keeping the original <code>rma_*</code> table schemas intact and adding new columns or related tables as you need them.
+</div>
+
+<div class="footer">
+  <strong>RMA Returns Monitor</strong> · v1.0.0.2 · Setup Guide<br>
+  Prepared by Microsoft Solution Engineering · Contact your Microsoft account team for support
+</div>
+
+</body>
+</html>

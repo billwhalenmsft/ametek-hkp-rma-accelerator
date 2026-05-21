@@ -1,0 +1,216 @@
+{
+  "_metadata": {
+    "customer": "AMETEK Haydon Kerk Pittman",
+    "useCase": "hkp_rma",
+    "demoDate": "2026-04-28",
+    "focus": "Window motor / linear actuator RMA triage",
+    "productFamily": "iDEA motor series (28mm, 35mm, 43mm, 57mm)",
+    "personas": [
+      "OEM customer service rep (Andersen Windows, Marvin)",
+      "HKP quality engineer",
+      "HKP RMA coordinator"
+    ]
+  },
+
+  "products": [
+    {
+      "sku": "iDEA-57-101",
+      "name": "iDEA 57mm Linear Actuator - Standard",
+      "category": "Linear Actuator",
+      "price": 245.00,
+      "description": "57mm hybrid stepper linear actuator, 200mm travel, IP54",
+      "warrantyMonths": 24,
+      "underWarranty": true
+    },
+    {
+      "sku": "iDEA-57-201",
+      "name": "iDEA 57mm Linear Actuator - High Force",
+      "category": "Linear Actuator",
+      "price": 312.00,
+      "description": "57mm hybrid stepper linear actuator, 300mm travel, 2000N peak",
+      "warrantyMonths": 24,
+      "underWarranty": true
+    },
+    {
+      "sku": "iDEA-43-105",
+      "name": "iDEA 43mm Linear Actuator",
+      "category": "Linear Actuator",
+      "price": 178.00,
+      "description": "43mm captive linear actuator, 100mm travel",
+      "warrantyMonths": 18,
+      "underWarranty": true
+    },
+    {
+      "sku": "iDEA-35-080",
+      "name": "iDEA 35mm Linear Actuator - Compact",
+      "category": "Linear Actuator",
+      "price": 124.00,
+      "description": "35mm non-captive linear actuator, 80mm travel",
+      "warrantyMonths": 18,
+      "underWarranty": true
+    },
+    {
+      "sku": "iDEA-28-050",
+      "name": "iDEA 28mm Linear Actuator",
+      "category": "Linear Actuator",
+      "price": 89.00,
+      "description": "28mm linear actuator, 50mm travel, low-profile window apps",
+      "warrantyMonths": 12,
+      "underWarranty": true
+    }
+  ],
+
+  "accounts": [
+    { "name": "Andersen Windows OEM",   "tier": 1, "type": "OEM",         "region": "North America", "annualVolumeUsd": 4200000 },
+    { "name": "Marvin Holdings",         "tier": 1, "type": "OEM",         "region": "North America", "annualVolumeUsd": 1850000 },
+    { "name": "Pella Corporation",       "tier": 2, "type": "OEM",         "region": "North America", "annualVolumeUsd":  920000 },
+    { "name": "Velux Group",             "tier": 2, "type": "OEM",         "region": "Europe",        "annualVolumeUsd":  650000 },
+    { "name": "Acme Window Distribution","tier": 3, "type": "Distributor", "region": "North America", "annualVolumeUsd":  140000 }
+  ],
+
+  "productSerials": [
+    { "serial": "IDEA-57-2025-104872", "sku": "iDEA-57-101", "owner": "Andersen Windows OEM",   "shippedDate": "2025-08-12", "warrantyEnd": "2027-08-12" },
+    { "serial": "IDEA-57-2025-104883", "sku": "iDEA-57-201", "owner": "Marvin Holdings",         "shippedDate": "2025-09-03", "warrantyEnd": "2027-09-03" },
+    { "serial": "IDEA-43-2024-094112", "sku": "iDEA-43-105", "owner": "Pella Corporation",       "shippedDate": "2024-06-18", "warrantyEnd": "2025-12-18" },
+    { "serial": "IDEA-35-2025-122001", "sku": "iDEA-35-080", "owner": "Velux Group",             "shippedDate": "2025-11-22", "warrantyEnd": "2027-05-22" },
+    { "serial": "IDEA-28-2023-073445", "sku": "iDEA-28-050", "owner": "Acme Window Distribution","shippedDate": "2023-04-30", "warrantyEnd": "2024-04-30" }
+  ],
+
+  "warrantyClaims": [
+    {
+      "claimNumber": "RMA-2026-0412",
+      "scenario": "Clear approve — defect in warranty",
+      "customerEmail": "service@andersenwindows.com",
+      "customerName": "Andersen Windows OEM",
+      "submittedOn": "2026-04-22T10:14:00Z",
+      "productSku": "iDEA-57-101",
+      "serialNumber": "IDEA-57-2025-104872",
+      "status": "Submitted",
+      "subject": "Lead screw stripped after 6 months — RMA request",
+      "description": "Customer reports premature lead-screw failure on iDEA 57mm actuator at 6 months in service. Unit installed in vertical sliding window, normal duty cycle (~30 cycles/day). Photo attached shows clear thread shear. Original PO #PO-AND-2025-0814.",
+      "expectedDisposition": "approve_replace",
+      "expectedConfidence": 0.92,
+      "expectedRationale": "In warranty (shipped 2025-08-12, expires 2027-08-12). Failure mode (lead-screw shear) is a known manufacturing defect category. Cycle count well within rated duty. No evidence of misuse."
+    },
+    {
+      "claimNumber": "RMA-2026-0413",
+      "scenario": "Clear reject — out of warranty",
+      "customerEmail": "rma@acmewindowdist.com",
+      "customerName": "Acme Window Distribution",
+      "submittedOn": "2026-04-23T14:02:00Z",
+      "productSku": "iDEA-28-050",
+      "serialNumber": "IDEA-28-2023-073445",
+      "status": "Submitted",
+      "subject": "iDEA 28mm motor seized — please replace",
+      "description": "End user (residential) reports motor seized after ~3 years of service. Unit was shipped 2023-04-30. Distributor requesting goodwill replacement.",
+      "expectedDisposition": "reject",
+      "expectedConfidence": 0.95,
+      "expectedRationale": "Out of warranty by 24+ months (warranty expired 2024-04-30, claim filed 2026-04-23). 3 years of service = expected life cycle. Goodwill replacement out of policy without OEM volume relationship — recommend offering paid repair quote."
+    },
+    {
+      "claimNumber": "RMA-2026-0414",
+      "scenario": "Ambiguous — needs engineer review",
+      "customerEmail": "warranty@marvin.com",
+      "customerName": "Marvin Holdings",
+      "submittedOn": "2026-04-24T09:30:00Z",
+      "productSku": "iDEA-57-201",
+      "serialNumber": "IDEA-57-2025-104883",
+      "status": "Submitted",
+      "subject": "Erratic position feedback — encoder failure?",
+      "description": "Field reports of position drift on iDEA 57-201 after ~7 months. Encoder readings inconsistent with commanded position. May be electrical noise or genuine encoder failure. Customer wants advance replacement; we suspect installation environment (HVAC controls cabinet w/ VFDs nearby).",
+      "expectedDisposition": "escalate_to_engineer",
+      "expectedConfidence": 0.45,
+      "expectedRationale": "In warranty, but failure mode could be either (a) encoder defect (covered) or (b) EMI from neighbouring VFDs (installation issue, not covered). Need engineer review of environmental conditions before disposition."
+    },
+    {
+      "claimNumber": "RMA-2026-0415",
+      "scenario": "Approve repair (not replace) — borderline wear",
+      "customerEmail": "support@pella.com",
+      "customerName": "Pella Corporation",
+      "submittedOn": "2026-04-25T11:45:00Z",
+      "productSku": "iDEA-43-105",
+      "serialNumber": "IDEA-43-2024-094112",
+      "status": "Submitted",
+      "subject": "Bearing noise — within warranty period",
+      "description": "Customer reports increasing bearing noise on iDEA 43-105 at 22 months. Still functional. Unit shipped 2024-06-18, warranty expires 2025-12-18 — claim filed 4 months past warranty.",
+      "expectedDisposition": "request_more_info",
+      "expectedConfidence": 0.55,
+      "expectedRationale": "Just past warranty (4 months). Bearing wear at 22-26 months can be normal or premature depending on duty cycle. Request usage logs from customer before deciding repair-at-cost vs goodwill repair."
+    },
+    {
+      "claimNumber": "RMA-2026-0416",
+      "scenario": "Insufficient evidence — request more info",
+      "customerEmail": "service@velux.com",
+      "customerName": "Velux Group",
+      "submittedOn": "2026-04-26T16:20:00Z",
+      "productSku": "iDEA-35-080",
+      "serialNumber": "IDEA-35-2025-122001",
+      "status": "Submitted",
+      "subject": "Motor not working",
+      "description": "It doesn't work. Please replace.",
+      "expectedDisposition": "request_more_info",
+      "expectedConfidence": 0.30,
+      "expectedRationale": "In warranty but description has no failure mode, no photos, no error codes, no usage context. Cannot make disposition — request: (1) photo of unit, (2) symptom description, (3) error code if controller-driven, (4) date failure first observed."
+    },
+    {
+      "claimNumber": "RMA-2026-0417",
+      "scenario": "Batch quality complaint — manufacturing batch investigation trigger",
+      "source": "REAL — Roche Diagnostics International AG, received via HKP website contact form 2026-05",
+      "customerEmail": "Rath.Feil@roche.com",
+      "customerName": "Roche Diagnostics International AG",
+      "customerPhone": "+41-41-792-3660",
+      "returnAddress": "Rotkreuz, Zug 6343 Switzerland",
+      "submittedOn": "2026-05-10T00:00:00Z",
+      "productSku": "LC1574W-05-B25",
+      "productDescription": "STEPPER MOTOR LC1574W-05 13mm PPS Nut — product 09287868001",
+      "serialPatterns": ["P2550-00xxx", "P2608-00xxx"],
+      "quantitySuspect": 13,
+      "mfgLocation": "Penang, MY",
+      "poNumber": "7100328936",
+      "salesRepresentative": "Istvan Nagy",
+      "complaintReason": "Quality Complaint",
+      "failureBreakdown": [
+        { "count": 4, "symptom": "Motor does not move at all" },
+        { "count": 9, "symptom": "Motor move with low force — hardware drawer cannot be moved using motor force" }
+      ],
+      "detectionMethod": "Test before use in production line",
+      "ncrNumber": null,
+      "additionalComments": "Please check stock to ensure next delivery has no issues.",
+      "status": "Submitted",
+      "subject": "Quality complaint — 13 LC1574W-05-B25 motors defective (4 no movement, 9 low force)",
+      "description": "Roche Diagnostics reports 13 stepper motors from PO 7100328936 (Penang mfg, date codes P2550-P2608) failed pre-production test. 4 units: no movement. 9 units: insufficient pull force — hardware drawer inoperable. Customer requests stock check to prevent further bad deliveries.",
+      "expectedDisposition": "approve_replace",
+      "expectedConfidence": 0.88,
+      "expectedRationale": "Batch complaint with 2 distinct failure modes across 13 units from Penang. Serial pattern (P2550/P2608) suggests manufacturing batch issue. No misuse indicators — detected in test before production use. High-value medical diagnostics OEM. Recommend: (1) approve RMA for all 13, (2) trigger batch investigation on Penang run, (3) hold inventory from same date codes. Auto-escalate to Quality Engineer due to batch size >5 and medical OEM.",
+      "agentFlowNotes": "This scenario demonstrates HKP website contact form parsing (Label: Value lines, no subject line). Intake agent must extract quantity, serial patterns, multi-failure breakdown from free-text description. Batch size >5 + medical OEM = auto-escalate rule."
+    }
+  ],
+
+  "rootCauseHistorical": {
+    "lead_screw_failure_in_warranty": {
+      "occurrences_last_12mo": 7,
+      "average_resolution": "approve_replace",
+      "average_days_to_close": 4.2
+    },
+    "encoder_position_drift": {
+      "occurrences_last_12mo": 3,
+      "average_resolution": "split: 1 approve, 2 reject (EMI)",
+      "average_days_to_close": 11.8
+    },
+    "bearing_wear_borderline_warranty": {
+      "occurrences_last_12mo": 5,
+      "average_resolution": "split: 3 goodwill repair, 2 paid repair",
+      "average_days_to_close": 8.5
+    }
+  },
+
+  "currentPainQuotes": {
+    "_note": "Placeholder until Bill drops Lou Gucciardo transcripts at OneDrive\\MSFT Corporate\\Customers\\AMETEK\\Transcripts\\HKP-RMA\\. These come from the description in the use-case writeup.",
+    "intake_email_pain":
+      "RMA requests are sent to shared inboxes — quality and operations engineers manually review, decide eligibility, route. Response can take several days due to queue backlogs.",
+    "scaling_pain":
+      "It works on one person's machine, but we don't know how to scale it globally.",
+    "consistency_pain":
+      "Outcomes depend on which engineer handles the RMA."
+  }
+}

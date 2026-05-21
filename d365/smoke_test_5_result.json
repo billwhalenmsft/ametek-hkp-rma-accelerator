@@ -1,0 +1,12 @@
+{
+  "TestClaimId": "770a2010-f14e-f111-bec6-000d3a5aed87",
+  "TestClaimNumber": "RMA-SMOKE-WTB-SMOKE-05131227",
+  "PartNumber": "WTB-MOTOR-9999",
+  "CreatedAt": "2026-05-13T12:27:57.792133-05:00",
+  "WaitedSeconds": 120,
+  "AssignedPlantValue": null,
+  "AssignedPlantName": null,
+  "StageEnteredOn": null,
+  "AutoAssignPass": false,
+  "StageTrackerPass": false
+}

@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>HKP RMA Agent Tester</title>
+<style>
+  :root {
+    --bg: #0f1419; --panel: #1a1f29; --panel-2: #232936; --border: #2d3548;
+    --text: #e6e9ef; --muted: #8892a8; --accent: #5b8def; --good: #4ade80;
+    --warn: #fbbf24; --bad: #f87171; --code: #0b1220;
+    --azure: #0078d4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.5;
+  }
+  header {
+    background: linear-gradient(135deg, #0078d4 0%, #5b8def 100%);
+    color: white; padding: 20px 32px; box-shadow: 0 2px 12px rgba(0,0,0,.4);
+  }
+  header h1 { margin: 0 0 4px; font-size: 22px; font-weight: 600; }
+  header p  { margin: 0; opacity: .92; font-size: 13px; }
+  .controls {
+    background: var(--panel); border-bottom: 1px solid var(--border);
+    padding: 12px 32px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  }
+  .controls label { font-size: 13px; color: var(--muted); }
+  .controls input {
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+    padding: 6px 10px; border-radius: 4px; font-family: monospace; font-size: 12px;
+    min-width: 380px;
+  }
+  .controls button {
+    background: var(--accent); color: white; border: none; padding: 8px 16px;
+    border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 13px;
+  }
+  .controls button.secondary {
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+  }
+  .controls button:hover { filter: brightness(1.15); }
+  main {
+    max-width: 1400px; margin: 0 auto; padding: 24px 32px 80px;
+    display: grid; gap: 16px;
+  }
+  .agent {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    overflow: hidden;
+  }
+  .agent-head {
+    padding: 14px 18px; background: var(--panel-2); border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .agent-head h2 { margin: 0; font-size: 15px; font-weight: 600; }
+  .agent-head .one-liner { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .agent-head button {
+    background: var(--accent); color: white; border: none; padding: 6px 14px;
+    border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;
+  }
+  .agent-body { padding: 14px 18px; }
+  .agent-body label { display: block; font-size: 11px; color: var(--muted); margin: 8px 0 4px; text-transform: uppercase; letter-spacing: .5px; }
+  .agent-body input, .agent-body textarea, .agent-body select {
+    width: 100%; background: var(--panel-2); border: 1px solid var(--border);
+    color: var(--text); padding: 8px 10px; border-radius: 4px;
+    font-family: monospace; font-size: 12px;
+  }
+  .agent-body textarea { min-height: 60px; resize: vertical; }
+  .response {
+    background: var(--code); border: 1px solid var(--border); border-radius: 6px;
+    padding: 12px 14px; margin-top: 12px; font-family: monospace; font-size: 12px;
+    white-space: pre-wrap; word-break: break-word; max-height: 480px; overflow-y: auto;
+    color: #d6e3ff;
+  }
+  .response.empty { color: var(--muted); font-style: italic; }
+  .status-pill {
+    display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-size: 11px; font-weight: 500; margin-right: 6px;
+  }
+  .status-pill.ok      { background: rgba(74,222,128,.15); color: var(--good); }
+  .status-pill.warn    { background: rgba(251,191,36,.15); color: var(--warn); }
+  .status-pill.error   { background: rgba(248,113,113,.15); color: var(--bad); }
+  .scenario-tag {
+    background: rgba(91,141,239,.12); color: var(--accent); padding: 2px 8px;
+    border-radius: 10px; font-size: 11px; margin-left: 6px;
+  }
+  .runall-bar {
+    background: var(--panel-2); padding: 10px 18px; border-bottom: 1px solid var(--border);
+    font-size: 13px; color: var(--muted);
+  }
+  .runall-bar select {
+    background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-left: 8px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>HKP RMA Agent Tester</h1>
+  <p>AMETEK Haydon Kerk Pittman — iDEA motor warranty &amp; RMA triage. 6 RAPP agents wired to your local <code>function_app.py</code>.</p>
+</header>
+
+<div class="controls">
+  <label>Function endpoint:
+    <input id="endpoint" value="http://localhost:7071/api/businessinsightbot_function" />
+  </label>
+  <label>User GUID:
+    <input id="userguid" value="hkp-demo-user" style="min-width:200px" />
+  </label>
+  <button onclick="runAll()">▶ Run All (full RMA scenario)</button>
+  <button class="secondary" onclick="clearAll()">Clear responses</button>
+</div>
+
+<div class="runall-bar">
+  Run-all uses scenario:
+  <select id="scenario">
+    <option value="RMA-2026-0412">RMA-2026-0412 — Clear approve (lead screw, in warranty)</option>
+    <option value="RMA-2026-0413">RMA-2026-0413 — Clear reject (out of warranty)</option>
+    <option value="RMA-2026-0414">RMA-2026-0414 — Ambiguous (encoder/EMI, escalate)</option>
+    <option value="RMA-2026-0415">RMA-2026-0415 — Borderline (bearing, just past warranty)</option>
+    <option value="RMA-2026-0416">RMA-2026-0416 — Insufficient evidence</option>
+  </select>
+</div>
+
+<main>
+
+  <!-- 1. INTAKE -->
+  <section class="agent" data-agent="HKPRMAIntake">
+    <div class="agent-head">
+      <div>
+        <h2>1. HKPRMAIntake <span class="scenario-tag">parse email / list inbox</span></h2>
+        <div class="one-liner">Parse incoming email/form into structured RMA fields, or list pending inbox items.</div>
+      </div>
+      <div>
+        <button onclick="runAgent('HKPRMAIntake', 'list_pending')">List Pending</button>
+        <button onclick="runAgent('HKPRMAIntake', 'parse_email')">Parse Email</button>
+      </div>
+    </div>
+    <div class="agent-body">
+      <label>From email</label>
+      <input data-field="from_email" value="service@andersenwindows.com" />
+      <label>Subject</label>
+      <input data-field="subject" value="Lead screw stripped after 6 months — RMA request" />
+      <label>Body</label>
+      <textarea data-field="body">Customer reports premature lead-screw failure on iDEA 57mm actuator (serial IDEA-57-2025-104872) at 6 months in service. Unit installed in vertical sliding window, normal duty cycle. Photo attached shows clear thread shear. Original PO #PO-AND-2025-0814.</textarea>
+      <div class="response empty">— no response yet —</div>
+    </div>
+  </section>
+
+  <!-- 2. WARRANTY LOOKUP -->
+  <section class="agent" data-agent="HKPWarrantyLookup">
+    <div class="agent-head">
+      <div>
+        <h2>2. HKPWarrantyLookup <span class="scenario-tag">serial → warranty status</span></h2>
+        <div class="one-liner">Look up SKU + warranty end + days remaining for a serial.</div>
+      </div>
+      <button onclick="runAgent('HKPWarrantyLookup', 'lookup_by_serial')">Look up</button>
+    </div>
+    <div class="agent-body">
+      <label>Serial number</label>
+      <input data-field="serial_number" value="IDEA-57-2025-104872" />
+      <div class="response empty">— no response yet —</div>
+    </div>
+  </section>
+
+  <!-- 3. ELIGIBILITY -->
+  <section class="agent" data-agent="HKPRMAEligibility">
+    <div class="agent-head">
+      <div>
+        <h2>3. HKPRMAEligibility <span class="scenario-tag">apply rules</span></h2>
+        <div class="one-liner">Returns eligible / ineligible / unclear with reasoning + evidence gaps.</div>
+      </div>
+      <button onclick="runAgent('HKPRMAEligibility', 'check_eligibility')">Check Eligibility</button>
+    </div>
+    <div class="agent-body">
+      <label>Claim number</label>
+      <input data-field="claim_number" value="RMA-2026-0412" />
+      <div class="response empty">— no response yet —</div>
+    </div>
+  </section>
+
+  <!-- 4. DISPOSITION -->
+  <section class="agent" data-agent="HKPRMADisposition">
+    <div class="agent-head">
+      <div>
+        <h2>4. HKPRMADisposition <span class="scenario-tag">recommend with confidence + rationale</span></h2>
+        <div class="one-liner">approve_repair / approve_replace / approve_refund / reject / request_more_info / escalate_to_engineer.</div>
+      </div>
+      <button onclick="runAgent('HKPRMADisposition', 'recommend_disposition')">Recommend</button>
+    </div>
+    <div class="agent-body">
+      <label>Claim number</label>
+      <input data-field="claim_number" value="RMA-2026-0412" />
+      <label>Eligibility verdict (carry-through from agent 3)</label>
+      <select data-field="eligibility_verdict">
+        <option value="eligible">eligible</option>
+        <option value="ineligible">ineligible</option>
+        <option value="unclear">unclear</option>
+      </select>
+      <label>Eligibility reasoning</label>
+      <input data-field="eligibility_reasoning" value="In warranty + lead screw failure" />
+      <div class="response empty">— no response yet —</div>
+    </div>
+  </section>
+
+  <!-- 5. STATUS -->
+  <section class="agent" data-agent="HKPRMAStatus">
+    <div class="agent-head">
+      <div>
+        <h2>5. HKPRMAStatus <span class="scenario-tag">customer-facing summary</span></h2>
+        <div class="one-liner">Generates a markdown status blurb for customer service email or bot reply.</div>
+      </div>
+      <button onclick="runAgent('HKPRMAStatus', 'get_status')">Get Status</button>
+    </div>
+    <div class="agent-body">
+      <label>Claim number</label>
+      <input data-field="claim_number" value="RMA-2026-0414" />
+      <label>Audience</label>
+      <select data-field="audience">
+        <option value="customer">customer</option>
+        <option value="internal">internal</option>
+      </select>
+      <div class="response empty">— no response yet —</div>
+    </div>
+  </section>
+
+  <!-- 6. ESCALATION -->
+  <section class="agent" data-agent="HKPRMAEscalation">
+    <div class="agent-head">
+      <div>
+        <h2>6. HKPRMAEscalation <span class="scenario-tag">hand off to engineer</span></h2>
+        <div class="one-liner">Auto-routes to the right Quality Engineer with structured evidence pack.</div>
+      </div>
+      <button onclick="runAgent('HKPRMAEscalation', 'escalate')">Escalate</button>
+    </div>
+    <div class="agent-body">
+      <label>Claim number</label>
+      <input data-field="claim_number" value="RMA-2026-0414" />
+      <label>Reason</label>
+      <input data-field="reason" value="In warranty but failure mode could be defect or installation EMI" />
+      <label>Suspected failure mode (optional)</label>
+      <input data-field="suspected_failure_mode" value="Encoder defect or VFD-induced electrical noise" />
+      <div class="response empty">— no response yet —</div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+async function callFunction(message, userGuid) {
+  const endpoint = document.getElementById('endpoint').value.trim();
+  const body = {
+    user_input: message,
+    conversation_history: [],
+    user_guid: userGuid || document.getElementById('userguid').value.trim(),
+  };
+  const resp = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
+  return await resp.json();
+}
+
+async function runAgent(agentName, action, paramsOverride) {
+  const section = document.querySelector(`[data-agent="${agentName}"]`);
+  const responseEl = section.querySelector('.response');
+  responseEl.classList.remove('empty');
+  responseEl.textContent = `⏳ Running ${agentName}.${action}...`;
+
+  // Collect params from data-field inputs in this section
+  const params = paramsOverride || {};
+  if (!paramsOverride) {
+    section.querySelectorAll('[data-field]').forEach(el => {
+      const k = el.getAttribute('data-field');
+      if (el.value) params[k] = el.value;
+    });
+  }
+  params.action = action;
+
+  // Phrase the request so the OpenAI orchestrator picks the right function
+  const message = `Use the ${agentName} agent to ${action.replace(/_/g, ' ')} with these inputs: ${JSON.stringify(params)}`;
+
+  try {
+    const result = await callFunction(message);
+    const text = result.assistant_response || JSON.stringify(result, null, 2);
+    responseEl.textContent = text;
+  } catch (err) {
+    responseEl.textContent = `❌ Error: ${err.message}\n\nIs function_app running?\n  func start  # in repo root`;
+  }
+}
+
+async function runAll() {
+  const scenario = document.getElementById('scenario').value;
+  const claimMap = {
+    'RMA-2026-0412': { serial: 'IDEA-57-2025-104872', from: 'service@andersenwindows.com', verdict: 'eligible',   reason: 'In warranty + lead screw failure',  esc_reason: 'Approved replacement, no escalation needed' },
+    'RMA-2026-0413': { serial: 'IDEA-28-2023-073445', from: 'rma@acmewindowdist.com',       verdict: 'ineligible', reason: 'Out of warranty by 24+ months',     esc_reason: 'No escalation — recommend paid repair quote' },
+    'RMA-2026-0414': { serial: 'IDEA-57-2025-104883', from: 'warranty@marvin.com',          verdict: 'unclear',    reason: 'In warranty + EMI suspected',       esc_reason: 'In warranty but failure mode could be defect or installation EMI' },
+    'RMA-2026-0415': { serial: 'IDEA-43-2024-094112', from: 'support@pella.com',            verdict: 'unclear',    reason: 'Borderline — 4 months past warranty', esc_reason: 'Borderline warranty + bearing wear, need usage data' },
+    'RMA-2026-0416': { serial: 'IDEA-35-2025-122001', from: 'service@velux.com',            verdict: 'unclear',    reason: 'Description too sparse',            esc_reason: 'Need more info before escalation' },
+  };
+  const ctx = claimMap[scenario];
+  if (!ctx) { alert('Unknown scenario'); return; }
+
+  // Pre-fill fields for visual continuity
+  document.querySelector('[data-agent="HKPRMAIntake"] [data-field="from_email"]').value = ctx.from;
+  document.querySelector('[data-agent="HKPWarrantyLookup"] [data-field="serial_number"]').value = ctx.serial;
+  document.querySelectorAll('[data-field="claim_number"]').forEach(el => el.value = scenario);
+  document.querySelector('[data-agent="HKPRMADisposition"] [data-field="eligibility_verdict"]').value = ctx.verdict;
+  document.querySelector('[data-agent="HKPRMADisposition"] [data-field="eligibility_reasoning"]').value = ctx.reason;
+  document.querySelector('[data-agent="HKPRMAEscalation"] [data-field="reason"]').value = ctx.esc_reason;
+
+  // Sequential run
+  await runAgent('HKPRMAIntake',         'list_pending');
+  await runAgent('HKPWarrantyLookup',    'lookup_by_serial');
+  await runAgent('HKPRMAEligibility',    'check_eligibility');
+  await runAgent('HKPRMADisposition',    'recommend_disposition');
+  await runAgent('HKPRMAStatus',         'get_status');
+  if (ctx.verdict === 'unclear') {
+    await runAgent('HKPRMAEscalation',   'escalate');
+  } else {
+    const sec = document.querySelector('[data-agent="HKPRMAEscalation"] .response');
+    sec.classList.remove('empty');
+    sec.textContent = '⏭ Skipped — disposition is clear, no escalation needed.';
+  }
+}
+
+function clearAll() {
+  document.querySelectorAll('.response').forEach(r => {
+    r.classList.add('empty');
+    r.textContent = '— no response yet —';
+  });
+}
+</script>
+</body>
+</html>

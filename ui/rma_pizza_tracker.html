@@ -1,0 +1,1610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    color: #1a1f2c;
+    background: #ffffff;
+    font-size: 14px;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .tracker { padding: 12px 18px 10px; }
+
+  /* ── Stage dots (top banner) ── */
+  .track-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    margin-bottom: 6px;
+  }
+  .step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex: 0 0 auto;
+    min-width: 84px;
+    text-align: center;
+    position: relative;
+  }
+  .step .dot {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 3px solid #d0d4dc; background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: #8a8f9a;
+    transition: all 0.2s ease; z-index: 2;
+  }
+  .step .label { font-size: 11px; color: #5b6577; white-space: nowrap; }
+  .step.done .dot { border-color: #107c10; background: #107c10; color: #fff; }
+  .step.done .label { color: #1a1f2c; font-weight: 600; }
+  .step.current .dot {
+    border-color: var(--current-color, #0078d4);
+    background: var(--current-color, #0078d4);
+    color: #fff;
+    box-shadow: 0 0 0 4px rgba(0, 120, 212, 0.18);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  .step.current .label { color: var(--current-color, #0078d4); font-weight: 700; }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(0, 120, 212, 0.18); }
+    50% { box-shadow: 0 0 0 8px rgba(0, 120, 212, 0.08); }
+  }
+  .connector {
+    flex: 1 1 auto; height: 3px; background: #d0d4dc;
+    margin-top: -20px; margin-bottom: 20px; z-index: 1; min-width: 14px;
+  }
+  .connector.done { background: #107c10; }
+  .meta-row {
+    display: flex; gap: 12px; padding: 8px 0;
+    border-top: 1px solid #eef0f4; font-size: 13px; color: #5b6577; flex-wrap: wrap;
+  }
+  .meta-row .meta-item { display: flex; align-items: center; gap: 5px; }
+  .meta-row .meta-item b { color: #1a1f2c; font-weight: 600; }
+  .meta-row .meta-pill { padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .meta-pill.stale { background: #fee2e2; color: #991b1b; }
+  .meta-pill.fresh { background: #dcfce7; color: #166534; }
+  .meta-pill.normal { background: #e0f2fe; color: #075985; }
+
+  /* ── Two-column body ── */
+  .columns {
+    display: flex;
+    gap: 14px;
+    padding-top: 8px;
+    border-top: 1px solid #eef0f4;
+  }
+  .col-left { flex: 1 1 50%; min-width: 0; }
+  .col-right { flex: 1 1 50%; min-width: 0; }
+
+  /* ── Card panels (used on both sides) ── */
+  .panel {
+    background: #fff;
+    border: 1px solid #e8ebf0;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .panel-head {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 12px;
+    background: #f8f9fb;
+    border-bottom: 1px solid #eef0f4;
+    font-size: 12px; font-weight: 700; color: #3b4553;
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  .panel-head .panel-icon { font-size: 14px; }
+  .panel-body { padding: 8px 12px; }
+
+  /* Data rows inside claim summary panels */
+  .data-row { display: flex; align-items: baseline; padding: 4px 0; font-size: 14px; line-height: 1.45; }
+  .data-row .d-label { flex: 0 0 110px; color: #667085; font-weight: 600; font-size: 12px; padding-top: 1px; }
+  .data-row .d-value { flex: 1; color: #1a1f2c; word-break: break-word; cursor: default; }
+  .data-row .d-value.empty { color: #b0b6c2; font-style: italic; }
+  .data-row .d-value.editable { cursor: pointer; border-bottom: 1px dashed transparent; transition: border-color .15s; }
+  .data-row .d-value.editable:hover { border-bottom-color: #0078d4; }
+  .data-row .d-value .edit-input {
+    width: 100%; padding: 2px 6px; border: 1px solid #0078d4; border-radius: 3px;
+    font-size: 14px; font-family: inherit; color: #1a1f2c; background: #fff; outline: none;
+    box-shadow: 0 0 0 1px rgba(0,120,212,0.2);
+  }
+  .data-row .d-value .edit-select {
+    width: 100%; padding: 3px 6px; border: 1px solid #0078d4; border-radius: 3px;
+    font-size: 14px; font-family: inherit; color: #1a1f2c; background: #fff; outline: none;
+    box-shadow: 0 0 0 1px rgba(0,120,212,0.2); cursor: pointer;
+  }
+
+  /* ── Action buttons in right column (Fluent-modern) ── */
+  .action-list { display: flex; flex-direction: column; gap: 6px; }
+  .act-btn {
+    appearance: none; width: 100%;
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px;
+    border: 1px solid #e3e6ec; border-radius: 8px;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfcfd 100%);
+    cursor: pointer;
+    font-size: 13px; font-weight: 600; color: #242a35;
+    text-align: left;
+    box-shadow: 0 1px 0 rgba(16,22,26,.04), 0 1px 2px rgba(16,22,26,.04);
+    transition: transform .08s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease;
+  }
+  .act-btn:hover {
+    background: linear-gradient(180deg, #ffffff 0%, #f3f7fc 100%);
+    border-color: #c8d4e3;
+    box-shadow: 0 1px 0 rgba(16,22,26,.04), 0 2px 6px rgba(16,22,26,.08);
+    transform: translateY(-1px);
+  }
+  .act-btn:active { transform: translateY(0); box-shadow: 0 1px 0 rgba(16,22,26,.06) inset; }
+  .act-btn:focus-visible { outline: 2px solid #0078d4; outline-offset: 2px; }
+  .act-btn .act-icon {
+    font-size: 14px; flex: 0 0 22px; height: 22px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 6px; background: #eef2f7; color: #475467;
+  }
+  /* Resolve (green) */
+  .act-btn.resolve { color: #14532d; border-color: #bbf7d0; background: linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%); }
+  .act-btn.resolve:hover { background: linear-gradient(180deg, #f0fdf4 0%, #dcfce7 100%); border-color: #86efac; }
+  .act-btn.resolve .act-icon { background: #dcfce7; color: #15803d; }
+  /* Danger (red) */
+  .act-btn.danger { color: #991b1b; border-color: #fecaca; background: linear-gradient(180deg, #ffffff 0%, #fef2f2 100%); }
+  .act-btn.danger:hover { background: linear-gradient(180deg, #fef2f2 0%, #fee2e2 100%); border-color: #fca5a5; }
+  .act-btn.danger .act-icon { background: #fee2e2; color: #b91c1c; }
+  /* Warn (amber) */
+  .act-btn.warn { color: #7c2d12; border-color: #fed7aa; background: linear-gradient(180deg, #ffffff 0%, #fff7ed 100%); }
+  .act-btn.warn:hover { background: linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%); border-color: #fdba74; }
+  .act-btn.warn .act-icon { background: #ffedd5; color: #c2410c; }
+
+  /* ── Status line ── */
+  .status-line { margin-top: 6px; min-height: 16px; font-size: 11px; color: #667085; }
+  .status-line.error { color: #b42318; }
+  .status-line.ok { color: #166534; }
+  .empty { padding: 16px 24px; color: #8a8f9a; font-style: italic; font-size: 12px; }
+
+  /* ── Version pill ── */
+  .ver-pill {
+    position: fixed; bottom: 3px; right: 8px;
+    font-size: 9px; color: #b0b6c2; letter-spacing: .3px;
+    pointer-events: none; z-index: 1;
+  }
+
+  /* ── Inline email composer ── */
+  .compose-pane {
+    border: 2px solid #0078d4;
+    border-radius: 6px;
+    background: #fafbfd;
+    padding: 10px 10px 10px;
+    margin-bottom: 10px;
+    animation: fadeIn .18s ease-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .compose-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .compose-header .compose-title {
+    font-size: 12px; font-weight: 700; color: #0078d4;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .compose-header .compose-close {
+    appearance: none; border: none; background: none; cursor: pointer;
+    font-size: 16px; color: #8a8f9a; padding: 2px 6px; border-radius: 4px; line-height: 1;
+  }
+  .compose-header .compose-close:hover { background: #eef0f4; color: #b42318; }
+  .compose-field { margin-bottom: 5px; }
+  .compose-field .cf-label {
+    font-size: 10px; font-weight: 700; color: #667085;
+    text-transform: uppercase; letter-spacing: .4px; margin-bottom: 2px;
+  }
+  .compose-field .cf-static {
+    font-size: 12px; color: #1a1f2c; padding: 4px 8px;
+    background: #fff; border: 1px solid #e2e5ea; border-radius: 4px;
+  }
+  .compose-field input[type="text"] {
+    display: block; width: 100%; padding: 5px 8px;
+    border: 1px solid #d0d7e2; border-radius: 4px;
+    font-size: 12px; font-family: inherit; color: #1a1f2c; background: #fff; outline: none;
+  }
+  .compose-field input[type="text"]:focus { border-color: #0078d4; box-shadow: 0 0 0 1px #0078d4; }
+  .compose-field textarea {
+    display: block; width: 100%; min-height: 80px; max-height: 200px;
+    padding: 6px 8px; border: 1px solid #d0d7e2; border-radius: 4px;
+    font-size: 12px; font-family: inherit; line-height: 1.5; color: #1a1f2c;
+    background: #fff; resize: vertical; outline: none;
+  }
+  .compose-field textarea:focus { border-color: #0078d4; box-shadow: 0 0 0 1px #0078d4; }
+  .compose-templates { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+  .tpl-pill {
+    appearance: none; border: 1px solid #d0d7e2; background: #fff;
+    border-radius: 999px; padding: 3px 9px; font-size: 10px; font-weight: 600;
+    cursor: pointer; color: #3b4553; transition: background .12s, border-color .12s;
+  }
+  .tpl-pill:hover { border-color: #0078d4; color: #0078d4; background: #f0f6ff; }
+  .tpl-pill.active { background: #deecf9; border-color: #0078d4; color: #0078d4; }
+  .compose-actions { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+  .compose-actions .btn-send {
+    appearance: none; border: 1px solid transparent;
+    background: linear-gradient(180deg, #1184e0 0%, #0067c0 100%);
+    color: #fff;
+    border-radius: 8px; padding: 8px 18px; font-size: 13px; font-weight: 600;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+    box-shadow: 0 1px 2px rgba(0,103,192,.25), 0 1px 0 rgba(255,255,255,.18) inset;
+    transition: transform .08s ease, box-shadow .12s ease, background .12s ease;
+  }
+  .compose-actions .btn-send:hover {
+    background: linear-gradient(180deg, #1a8de8 0%, #0073d3 100%);
+    box-shadow: 0 2px 6px rgba(0,103,192,.35), 0 1px 0 rgba(255,255,255,.2) inset;
+    transform: translateY(-1px);
+  }
+  .compose-actions .btn-send:active { transform: translateY(0); }
+  .compose-actions .btn-send:disabled {
+    background: #cfe2f3; color: #6a7d8e; cursor: not-allowed;
+    box-shadow: none; transform: none;
+  }
+  /* Danger variant (Deny Claim submit) */
+  .compose-actions .btn-send.danger {
+    background: linear-gradient(180deg, #d93b3b 0%, #b42318 100%);
+    box-shadow: 0 1px 2px rgba(180,35,24,.3), 0 1px 0 rgba(255,255,255,.18) inset;
+  }
+  .compose-actions .btn-send.danger:hover {
+    background: linear-gradient(180deg, #e34646 0%, #c22a1f 100%);
+    box-shadow: 0 2px 6px rgba(180,35,24,.4), 0 1px 0 rgba(255,255,255,.2) inset;
+  }
+  .compose-actions .btn-cancel {
+    appearance: none; border: 1px solid #d6dce5; background: #fff; color: #475467;
+    border-radius: 8px; padding: 7px 14px; font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: background .12s ease, border-color .12s ease;
+  }
+  .compose-actions .btn-cancel:hover { background: #f6f8fb; border-color: #b8c2cf; color: #1f2937; }
+  .compose-actions .btn-cancel:focus-visible { outline: 2px solid #0078d4; outline-offset: 2px; }
+  .compose-actions .send-status { font-size: 11px; margin-left: auto; }
+  .compose-actions .send-status.ok { color: #166534; }
+  .compose-actions .send-status.error { color: #b42318; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 20px; left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background: #107c10; color: #fff; padding: 8px 16px;
+    border-radius: 6px; font-size: 12px; font-weight: 600;
+    opacity: 0; transition: opacity .2s, transform .2s;
+    pointer-events: none; z-index: 10; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.err { background: #b42318; }
+</style>
+</head>
+<body>
+<div id="root"><div class="empty">Loading...</div></div>
+<div class="ver-pill">V.12</div>
+<div id="toast" class="toast"></div>
+
+<script>
+(function() {
+  var VERSION = "V.02";
+  var STAGES = [
+    { value: 100000000, label: "New", color: "#0078d4" },
+    { value: 100000001, label: "Triage", color: "#f2a60e" },
+    { value: 100000002, label: "Investigation", color: "#8264cc" },
+    { value: 100000003, label: "Decision", color: "#d17f1a" },
+    { value: 100000004, label: "Closed", color: "#107c10" }
+  ];
+  var currentClaim = null;
+  var templateCache = null;
+
+  /* ── Toast ── */
+  function showToast(msg, isError) {
+    var el = document.getElementById("toast");
+    if (!el) return;
+    el.textContent = msg;
+    el.className = "toast show" + (isError ? " err" : "");
+    clearTimeout(el._tid);
+    el._tid = setTimeout(function() { el.className = "toast"; }, 3000);
+  }
+
+  function getXrm() {
+    if (window.parent && window.parent.Xrm) return window.parent.Xrm;
+    if (window.Xrm) return window.Xrm;
+    return null;
+  }
+
+  function getFormContext() {
+    var xrm = getXrm();
+    if (!xrm) return null;
+    try { if (xrm.Page && xrm.Page.data && xrm.Page.data.entity) return xrm.Page; } catch (e) {}
+    return null;
+  }
+
+  function getRecordId() {
+    var fc = getFormContext();
+    if (fc && fc.data && fc.data.entity) {
+      try {
+        var id = fc.data.entity.getId();
+        return id ? id.replace(/[{}]/g, "") : null;
+      } catch (e) {}
+    }
+    try {
+      var url = window.parent.location.href;
+      var m = url.match(/id=([0-9a-fA-F-]{36})/);
+      if (m) return m[1];
+      m = url.match(/\/rma_claim\/([0-9a-fA-F-]{36})/);
+      if (m) return m[1];
+    } catch (e) {}
+    return null;
+  }
+
+  function apiGet(path, callback) {
+    var req = new XMLHttpRequest();
+    req.open("GET", "/api/data/v9.2/" + path, true);
+    req.setRequestHeader("Accept", "application/json");
+    req.setRequestHeader("OData-Version", "4.0");
+    req.setRequestHeader("OData-MaxVersion", "4.0");
+    req.setRequestHeader("Prefer", 'odata.include-annotations="OData.Community.Display.V1.FormattedValue"');
+    req.onreadystatechange = function() {
+      if (req.readyState !== 4) return;
+      if (req.status >= 200 && req.status < 300) callback(null, JSON.parse(req.responseText));
+      else callback(req.status + ": " + req.statusText, null);
+    };
+    req.send();
+  }
+
+  function apiPost(path, body, callback) {
+    var req = new XMLHttpRequest();
+    req.open("POST", "/api/data/v9.2/" + path, true);
+    req.setRequestHeader("Accept", "application/json");
+    req.setRequestHeader("Content-Type", "application/json");
+    req.setRequestHeader("OData-Version", "4.0");
+    req.setRequestHeader("OData-MaxVersion", "4.0");
+    req.onreadystatechange = function() {
+      if (req.readyState !== 4) return;
+      if (req.status >= 200 && req.status < 300) callback(null, req.status);
+      else {
+        var errMsg = req.status + ": " + req.statusText;
+        try { var j = JSON.parse(req.responseText); errMsg = req.status + " — " + (j.error ? j.error.message : req.responseText); } catch(e) {}
+        callback(errMsg, null);
+      }
+    };
+    req.send(JSON.stringify(body));
+  }
+
+  function daysBetween(a, b) {
+    if (!a || !b) return 0;
+    var ms = new Date(b).getTime() - new Date(a).getTime();
+    return Math.max(0, Math.floor(ms / (1000 * 60 * 60 * 24)));
+  }
+
+  function firstNameFromClaim(claim) {
+    var full = (claim.rma_contactname || claim.rma_customername || "").trim();
+    if (!full) return "there";
+    full = full.replace(/^\s*(mr|mrs|ms|dr|prof)\.\s+/i, "");
+    return full.split(/\s+/)[0] || "there";
+  }
+
+  function escapeHtml(s) {
+    var d = document.createElement("div");
+    d.appendChild(document.createTextNode(s || ""));
+    return d.innerHTML;
+  }
+
+  function fmtCurrency(v) {
+    if (v == null) return "";
+    var n = Number(v);
+    return isNaN(n) ? "" : "$" + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function mergeTemplate(text, claim) {
+    var merged = text || "";
+    var createdDate = claim.createdon || claim.rma_createddate || "";
+    var createdLabel = createdDate ? new Date(createdDate).toLocaleDateString() : "";
+    var resolution = claim["rma_resolution@OData.Community.Display.V1.FormattedValue"] || "Pending";
+    var status = claim["rma_status@OData.Community.Display.V1.FormattedValue"] || "";
+    var claimNumber = claim.rma_claimnumber || "";
+    var fullName = (claim.rma_contactname || claim.rma_customername || "").trim();
+    var firstName = firstNameFromClaim(claim);
+    var replacements = {
+      "{claimNumber}": claimNumber, "{{claimNumber}}": claimNumber, "{{claim_number}}": claimNumber, "{claim_number}": claimNumber, "{rma_number}": claimNumber, "{{rma_number}}": claimNumber,
+      "{customerName}": fullName, "{{customerName}}": fullName, "{{customer_name}}": fullName, "{customer_name}": fullName,
+      "{firstName}": firstName, "{{firstName}}": firstName, "{{first_name}}": firstName, "{first_name}": firstName, "{{firstname}}": firstName, "{firstname}": firstName,
+      "{partNumber}": claim.rma_partnumber || "", "{{partNumber}}": claim.rma_partnumber || "", "{{part_number}}": claim.rma_partnumber || "", "{part_number}": claim.rma_partnumber || "",
+      "{quantity}": claim.rma_quantity != null ? String(claim.rma_quantity) : "", "{{quantity}}": claim.rma_quantity != null ? String(claim.rma_quantity) : "",
+      "{status}": status, "{{status}}": status,
+      "{resolution}": resolution, "{{resolution}}": resolution,
+      "{createdDate}": createdLabel, "{{createdDate}}": createdLabel, "{{created_date}}": createdLabel, "{created_date}": createdLabel
+    };
+    Object.keys(replacements).forEach(function(key) {
+      merged = merged.split(key).join(replacements[key] || "");
+    });
+    return merged;
+  }
+
+  function fetchClaim(id, callback) {
+    apiGet("rma_claims(" + id + ")?$select=" + [
+      "rma_claimnumber","rma_status","rma_resolution","rma_stageenteredon","rma_createddate","createdon",
+      "rma_customername","rma_contactname","rma_customeremail","rma_partnumber","rma_quantity","rma_creditamount",
+      "rma_failuremode","rma_warrantystatus","_rma_assignedplant_value","rma_failuredescription"
+    ].join(","), callback);
+  }
+
+  function fetchTemplates(callback) {
+    if (templateCache) return callback(null, templateCache);
+    apiGet("rma_emailtemplates?$select=rma_emailtemplateid,rma_name,rma_subject,rma_body,rma_templatetype,rma_isactive&$filter=rma_isactive eq true&$orderby=rma_name", function(err, res) {
+      if (err) return callback(err);
+      templateCache = (res && res.value) || [];
+      callback(null, templateCache);
+    });
+  }
+
+  function findTemplate(templates, kind) {
+    var rx = kind === "submission" ? /submission\s+confirmation/i : /status\s+update/i;
+    for (var i = 0; i < templates.length; i++) {
+      var label = templates[i].rma_name || "";
+      if (rx.test(label)) return templates[i];
+    }
+    return null;
+  }
+
+  function setStatus(msg, cssClass) {
+    var el = document.getElementById("tracker-status");
+    if (!el) return;
+    el.className = "status-line" + (cssClass ? " " + cssClass : "");
+    el.textContent = msg || "";
+  }
+
+  /* ── Resolution / Approval handlers (run directly, no parent frame needed) ── */
+
+  var RESOLUTION = { CREDIT: 100000000, REPLACEMENT: 100000001, REPAIR: 100000002, DENIED: 100000003 };
+  var STATUS_CLOSED = 100000004;
+  /* rma_approvalhistory.rma_action picklist (extended for resolution outcomes) */
+  var ACTION = {
+    APPROVAL_REQUESTED: 100000000,
+    APPROVED:           100000001,
+    DENIED:             100000002,
+    ESCALATED:          100000003,
+    CREDIT_ISSUED:      100000004,
+    REPLACEMENT_SENT:   100000005,
+    REPAIR_COMPLETED:   100000006,
+    OTHER_ACTION:       100000007
+  };
+  /* rma_approvalhistory.rma_erpstatus picklist */
+  var ERP_STATUS = { NOT_REQUIRED: 100000000, PENDING: 100000001, SENT: 100000002, FAILED: 100000003 };
+
+  /* Map resolve modal actionType -> config */
+  var RESOLVE_CONFIG = {
+    CREDIT:      { resolution: 100000000, actionCode: 100000004, label: "Credit Issued",      icon: "\uD83D\uDCB3", titleVerb: "Issue Credit",       templateRegex: /^credit[:\-\s]/i,      requiresAmount: true,  erp: 100000001 /* Pending */ },
+    REPLACEMENT: { resolution: 100000001, actionCode: 100000005, label: "Replacement Sent",   icon: "\uD83D\uDCE6", titleVerb: "Send Replacement",  templateRegex: /^replacement[:\-\s]/i, requiresAmount: true,  erp: 100000001 /* Pending */ },
+    REPAIR:      { resolution: 100000002, actionCode: 100000006, label: "Repair Completed",   icon: "\uD83D\uDD27", titleVerb: "Repair Completed", templateRegex: /^repair[:\-\s]/i,      requiresAmount: false, erp: 100000000 /* Not Required */ },
+    OTHER:       { resolution: 100000000, actionCode: 100000007, label: "Other Action",       icon: "\u2699",       titleVerb: "Other Action",      templateRegex: null /* any */,         requiresAmount: false, erp: 100000000 /* Not Required */ }
+  };
+
+  function xrmConfirm(msg, title) {
+    /* Try Xrm dialog first, fall back to window.confirm */
+    try {
+      var xrm = getXrm();
+      if (xrm && xrm.Navigation && xrm.Navigation.openConfirmDialog) {
+        return xrm.Navigation.openConfirmDialog({ text: msg, title: title || "Confirm", confirmButtonLabel: "Yes", cancelButtonLabel: "No" });
+      }
+    } catch (e) {}
+    return Promise.resolve({ confirmed: window.confirm((title ? title + "\n\n" : "") + msg) });
+  }
+
+  function xrmAlert(msg, title) {
+    try {
+      var xrm = getXrm();
+      if (xrm && xrm.Navigation && xrm.Navigation.openAlertDialog) {
+        return xrm.Navigation.openAlertDialog({ text: msg, title: title || "RMA" });
+      }
+    } catch (e) {}
+    alert(msg);
+    return Promise.resolve();
+  }
+
+  function setResolutionFields(fc, resolutionValue, label, opts) {
+    opts = opts || {};
+    /* Re-acquire fresh form context — passed-in fc may be stale after awaiting async XHRs */
+    var freshFc = getFormContext() || fc;
+    if (!freshFc) { showToast("Form context unavailable", true); return; }
+    try {
+      freshFc.getAttribute("rma_resolution").setValue(resolutionValue);
+      freshFc.getAttribute("rma_status").setValue(STATUS_CLOSED);
+      freshFc.getAttribute("rma_closeddate").setValue(new Date());
+      var pending = freshFc.getAttribute("rma_haspendingresponse");
+      if (pending) pending.setValue(false);
+      ["rma_resolution","rma_status","rma_closeddate","rma_haspendingresponse"].forEach(function(f) {
+        var a = freshFc.getAttribute(f); if (a) a.setSubmitMode("always");
+      });
+    } catch(setErr) {
+      try { console.error("setResolutionFields setValue error:", setErr); } catch(e){}
+      showToast("Set fields failed: " + (setErr.message || setErr), true);
+      return;
+    }
+
+    /* save() may return undefined in some form states. Wrap defensively. */
+    var savePromise;
+    try { savePromise = freshFc.data.entity.save(); } catch(saveErr) {
+      try { console.error("save() threw:", saveErr); } catch(e){}
+      showToast("Save threw: " + (saveErr.message || saveErr), true);
+      return;
+    }
+    if (!savePromise || typeof savePromise.then !== "function") {
+      try { console.warn("save() returned non-promise:", savePromise, "— falling back to direct PATCH"); } catch(e){}
+      /* Fallback: PATCH the record directly via Web API */
+      var rid = getRecordId();
+      if (!rid) { showToast("No claim id for fallback save", true); return; }
+      var patchBody = {};
+      patchBody["rma_resolution"] = resolutionValue;
+      patchBody["rma_status"] = STATUS_CLOSED;
+      patchBody["rma_closeddate"] = new Date().toISOString();
+      patchBody["rma_haspendingresponse"] = false;
+      var pReq = new XMLHttpRequest();
+      pReq.open("PATCH", "/api/data/v9.2/rma_claims(" + rid + ")", true);
+      pReq.setRequestHeader("Accept", "application/json");
+      pReq.setRequestHeader("Content-Type", "application/json");
+      pReq.setRequestHeader("OData-Version", "4.0");
+      pReq.setRequestHeader("OData-MaxVersion", "4.0");
+      pReq.setRequestHeader("If-Match", "*");
+      pReq.onreadystatechange = function() {
+        if (pReq.readyState !== 4) return;
+        if (pReq.status >= 200 && pReq.status < 300) {
+          showToast("Resolved: " + label);
+          setStatus("Saved (PATCH) \u2014 " + label, "ok");
+          fetchClaim(rid, function(err, claim) { if (!err) render(claim); });
+        } else {
+          showToast("PATCH save failed " + pReq.status, true);
+        }
+      };
+      pReq.send(JSON.stringify(patchBody));
+      return;
+    }
+    savePromise.then(function() {
+      showToast("Resolved: " + label);
+      setStatus("Saved \u2014 " + label, "ok");
+      var id = getRecordId();
+      /* Log to timeline (skip if caller already created a more specific note) */
+      if (!opts.skipNote) {
+        createNote(id, "Resolution: " + label, "Claim resolved by " + getUserName() + " on " + new Date().toLocaleString() + ".\n\nResolution: " + label).then(function() { refreshTimeline(); });
+      }
+      /* Re-fetch claim to update the stage dots */
+      if (id) fetchClaim(id, function(err, claim) { if (!err) render(claim); });
+    }, function(e) {
+      showToast("Save failed: " + (e && (e.message || e)), true);
+    });
+  }
+
+  function createApprovalRecord(claimId, amount, reason) {
+    var fc = getFormContext();
+    var claimNum = fc ? (fc.getAttribute("rma_claimnumber").getValue() || "claim") : "claim";
+    var data = {
+      "rma_name": "Approval for " + claimNum,
+      "rma_Claim@odata.bind": "/rma_claims(" + claimId + ")",
+      "rma_requestedamount": amount,
+      "rma_requestreason": reason || "Auto-requested from claim form"
+    };
+    return new Promise(function(resolve, reject) {
+      apiPost("rma_approvalrecords", data, function(err) { err ? reject(err) : resolve(); });
+    });
+  }
+
+  /* ── Timeline: create annotation (Note) linked to claim ── */
+  function createNote(claimId, subject, body) {
+    if (!claimId) return Promise.resolve();
+    var data = {
+      "subject": subject || "Note",
+      "notetext": body || "",
+      "objectid_rma_claim@odata.bind": "/rma_claims(" + claimId + ")"
+    };
+    return new Promise(function(resolve) {
+      apiPost("annotations", data, function(err) {
+        if (err) { try { console.warn("createNote failed:", err); } catch(e){} }
+        resolve();
+      });
+    });
+  }
+
+  function getUserName() {
+    var xrm = getXrm();
+    try { return xrm.Utility.getGlobalContext().userSettings.userName || "admin"; } catch(e) { return "admin"; }
+  }
+
+  function refreshTimeline() {
+    var fc = getFormContext();
+    if (!fc) return;
+    try {
+      var tl = fc.ui.controls.get("Timeline") || fc.ui.controls.get("timeline");
+      if (tl && tl.refresh) tl.refresh();
+    } catch(e) {}
+  }
+
+  function handleResolveCredit() {
+    var fc = getFormContext();
+    if (!fc) return setStatus("Form context unavailable", "error");
+    var creditAttr = fc.getAttribute("rma_creditamount");
+    var amount = creditAttr ? (creditAttr.getValue() || 0) : 0;
+    var plant = fc.getAttribute("rma_assignedplant").getValue();
+    var plantId = (plant && plant.length > 0) ? plant[0].id : null;
+    var claimId = getRecordId();
+
+    /* Check plant auto-approval threshold */
+    var checkThreshold = plantId
+      ? new Promise(function(res) {
+          apiGet("rma_plants(" + plantId.replace(/[{}]/g,"") + ")?$select=rma_autocreditthreshold,rma_name", function(err, r) {
+            res(err ? { threshold: 0, name: "plant" } : { threshold: r.rma_autocreditthreshold || 0, name: r.rma_name || "plant" });
+          });
+        })
+      : Promise.resolve({ threshold: 0, name: "plant" });
+
+    checkThreshold.then(function(info) {
+      if (amount > info.threshold && info.threshold > 0) {
+        xrmConfirm(
+          "Credit $" + amount.toFixed(2) + " exceeds " + info.name + " auto-approval threshold ($" + info.threshold.toFixed(2) + "). An approval request will be created. Continue?",
+          "Approval Required"
+        ).then(function(r) {
+          if (!r.confirmed) return;
+          createApprovalRecord(claimId, amount, "Credit above plant auto-approval threshold").then(function() {
+            showToast("Approval request created");
+            setStatus("Approval request created — awaiting manager", "ok");
+            createNote(claimId, "Approval requested — $" + amount.toFixed(2) + " (over threshold)",
+              "Credit of $" + amount.toFixed(2) + " exceeds " + info.name + " threshold of $" + info.threshold.toFixed(2) + ".\n\nApproval requested by " + getUserName() + " on " + new Date().toLocaleString() + ".\nTeams Approval card sent to plant approver(s)."
+            ).then(function() { refreshTimeline(); });
+          }, function(e) { showToast("Failed to create approval: " + e, true); });
+        });
+      } else {
+        openResolveModal("CREDIT", amount);
+      }
+    });
+  }
+
+  function handleResolveReplacement() { openResolveModal("REPLACEMENT"); }
+  function handleResolveRepair()       { openResolveModal("REPAIR"); }
+  function handleResolveOther()        { openResolveModal("OTHER"); }
+
+  /* ── Unified resolve modal (Credit/Replacement/Repair/Other) ── */
+  function fetchLatestApprovedAmount(claimId, cb) {
+    if (!claimId) return cb(0);
+    /* rma_approvalstatus: 100000001 = Approved */
+    var q = "rma_approvalrecords?$select=rma_requestedamount,rma_approvalstatus,createdon" +
+            "&$filter=_rma_claim_value eq " + claimId + " and rma_approvalstatus eq 100000001" +
+            "&$orderby=createdon desc&$top=1";
+    apiGet(q, function(err, res) {
+      if (err || !res || !res.value || !res.value.length) return cb(0);
+      cb(res.value[0].rma_requestedamount || 0);
+    });
+  }
+
+  function openResolveModal(actionType, prefilledAmount) {
+    var cfg = RESOLVE_CONFIG[actionType];
+    if (!cfg) return setStatus("Unknown action: " + actionType, "error");
+    var fc = getFormContext();
+    if (!fc) return setStatus("Form context unavailable", "error");
+    if (!currentClaim) return setStatus("Claim not loaded.", "error");
+    var claimId = getRecordId();
+    setStatus("Loading templates...", "");
+    fetchTemplates(function(err, templates) {
+      if (err) return setStatus("Failed to load templates: " + err, "error");
+      var pool = (templates || []).filter(function(t) {
+        var n = t.rma_name || "";
+        if (/^denial[:\-\s]/i.test(n)) return false;
+        if (cfg.templateRegex) return cfg.templateRegex.test(n);
+        return true;
+      });
+      if (!pool.length) {
+        return setStatus("No templates for " + cfg.label + ". Add a template named '" + actionType.charAt(0) + actionType.slice(1).toLowerCase() + ": ...' under Email Templates.", "error");
+      }
+      /* Determine default amount: prefilled > latest approved > claim credit amount */
+      function proceed(approvedAmount) {
+        var creditAttr = fc.getAttribute("rma_creditamount");
+        var claimAmt = creditAttr ? (creditAttr.getValue() || 0) : 0;
+        var defaultAmt = (typeof prefilledAmount === "number" && prefilledAmount > 0) ? prefilledAmount
+                       : (approvedAmount > 0) ? approvedAmount
+                       : claimAmt;
+        renderResolveModal(cfg, actionType, pool, defaultAmt, approvedAmount, claimId, fc);
+      }
+      if (cfg.requiresAmount) {
+        fetchLatestApprovedAmount(claimId, proceed);
+      } else {
+        proceed(0);
+      }
+    });
+  }
+
+  function renderResolveModal(cfg, actionType, pool, defaultAmt, approvedAmt, claimId, fc) {
+    var mount = document.getElementById("compose-mount");
+    if (!mount) return setStatus("UI mount missing.", "error");
+    var recipient = currentClaim.rma_customeremail || "";
+    var claimNum = currentClaim.rma_claimnumber || "";
+    var custName = currentClaim.rma_customername || "Customer";
+
+    function reasonLabel(name) {
+      return (name || "").replace(/^(credit|replacement|repair)[:\-\s]+/i, "").trim() || name || "Template";
+    }
+
+    var h = '<div class="compose-pane">';
+    h += '<div class="compose-header"><div class="compose-title">' + cfg.icon + ' ' + escapeHtml(cfg.titleVerb) + ' — Claim ' + escapeHtml(claimNum) + '</div>';
+    h += '<button class="compose-close" data-resolve="close" title="Cancel">\u2715</button></div>';
+    h += '<div class="compose-field"><div class="cf-label">Customer</div><div class="cf-static">' + escapeHtml(custName) + (recipient ? ' &lt;' + escapeHtml(recipient) + '&gt;' : ' (no email)') + '</div></div>';
+    h += '<div class="compose-field"><div class="cf-label">Template</div><select id="rsv-tpl" style="width:100%;padding:8px;border:1px solid var(--border,#ddd);border-radius:6px;background:#fff;font-size:13px;">';
+    for (var i = 0; i < pool.length; i++) {
+      h += '<option value="' + pool[i].rma_emailtemplateid + '">' + escapeHtml(reasonLabel(pool[i].rma_name)) + '</option>';
+    }
+    h += '</select></div>';
+
+    if (cfg.requiresAmount) {
+      h += '<div class="compose-field"><div class="cf-label">Amount (USD)';
+      if (approvedAmt > 0) h += ' <span style="color:#6c757d;font-weight:400;">— manager approved $' + approvedAmt.toFixed(2) + '</span>';
+      h += '</div>';
+      h += '<input id="rsv-amount" type="number" step="0.01" min="0" value="' + (defaultAmt || 0).toFixed(2) + '" style="width:100%;padding:8px;border:1px solid var(--border,#ddd);border-radius:6px;font-size:13px;"/></div>';
+      h += '<div class="compose-field" id="rsv-override-wrap" style="display:none;background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:10px;">';
+      h += '<div class="cf-label" style="color:#856404;">⚠ Override reason (required)</div>';
+      h += '<div style="font-size:12px;color:#856404;margin-bottom:6px;" id="rsv-override-msg">Amount differs from approved value.</div>';
+      h += '<input id="rsv-override-reason" type="text" placeholder="e.g., customer requested partial refund" style="width:100%;padding:8px;border:1px solid #ffc107;border-radius:6px;font-size:13px;"/></div>';
+    }
+
+    h += '<div class="compose-field"><div class="cf-label">Email body to customer (editable)</div>';
+    h += '<textarea id="rsv-body" rows="10" style="width:100%;padding:8px;border:1px solid var(--border,#ddd);border-radius:6px;font-size:13px;font-family:inherit;resize:vertical;"></textarea></div>';
+    h += '<div class="compose-field"><label style="display:flex;gap:8px;align-items:center;font-size:13px;cursor:pointer;"><input type="checkbox" id="rsv-sendemail" checked' + (recipient ? '' : ' disabled') + '/> Send confirmation email to customer</label></div>';
+    if (cfg.erp === 100000001) {
+      h += '<div class="compose-field"><div style="font-size:12px;color:#6c757d;background:#f8f9fa;padding:8px;border-radius:6px;">📤 ERP push: an audit row will be queued for downstream system integration (Navision stub).</div></div>';
+    }
+    h += '<div class="compose-actions"><button class="btn-cancel" data-resolve="close">Cancel</button>';
+    h += '<button class="btn-send" data-resolve="submit">Confirm ' + escapeHtml(cfg.titleVerb) + '</button></div>';
+    h += '<div id="rsv-status" class="send-status"></div>';
+    h += '</div>';
+
+    mount.innerHTML = h;
+    mount.style.display = "block";
+
+    var sel = document.getElementById("rsv-tpl");
+    var bodyTa = document.getElementById("rsv-body");
+    function syncTemplate() {
+      var picked = pool.find(function(t){return t.rma_emailtemplateid===sel.value;});
+      if (picked) {
+        var merged = mergeTemplate(picked.rma_body || "", currentClaim);
+        var amtEl = document.getElementById("rsv-amount");
+        if (amtEl) merged = merged.replace(/\{amount\}/g, "$" + (parseFloat(amtEl.value)||0).toFixed(2));
+        bodyTa.value = merged;
+      }
+    }
+    sel.addEventListener("change", syncTemplate);
+    syncTemplate();
+
+    if (cfg.requiresAmount) {
+      var amtEl = document.getElementById("rsv-amount");
+      var ovWrap = document.getElementById("rsv-override-wrap");
+      var ovMsg = document.getElementById("rsv-override-msg");
+      function checkOverride() {
+        var v = parseFloat(amtEl.value) || 0;
+        if (approvedAmt > 0 && Math.abs(v - approvedAmt) > 0.005) {
+          ovWrap.style.display = "block";
+          ovMsg.textContent = "Overriding approved $" + approvedAmt.toFixed(2) + " with $" + v.toFixed(2) + " — reason required.";
+        } else {
+          ovWrap.style.display = "none";
+        }
+        syncTemplate();
+      }
+      amtEl.addEventListener("input", checkOverride);
+    }
+
+    window.__resolveCtx = { cfg: cfg, actionType: actionType, pool: pool, approvedAmt: approvedAmt, claimId: claimId, fc: fc, reasonLabelFn: reasonLabel };
+
+    mount.querySelectorAll("[data-resolve]").forEach(function(b){
+      b.addEventListener("click", function(){
+        var act = b.getAttribute("data-resolve");
+        if (act === "close") { mount.innerHTML = ""; mount.style.display = "none"; }
+        if (act === "submit") submitResolveClaim();
+      });
+    });
+    setStatus("", "");
+  }
+
+  function submitResolveClaim() {
+    var ctx = window.__resolveCtx;
+    if (!ctx) return;
+    var cfg = ctx.cfg, pool = ctx.pool, approvedAmt = ctx.approvedAmt, claimId = ctx.claimId, fc = ctx.fc;
+    var sel = document.getElementById("rsv-tpl");
+    var bodyTa = document.getElementById("rsv-body");
+    var sendEmail = document.getElementById("rsv-sendemail");
+    var sts = document.getElementById("rsv-status");
+    var submitBtn = document.querySelector('[data-resolve="submit"]');
+
+    var amount = 0, overridden = false, overrideReason = "";
+    if (cfg.requiresAmount) {
+      var amtEl = document.getElementById("rsv-amount");
+      amount = parseFloat(amtEl.value) || 0;
+      if (amount <= 0) { showToast("Amount must be greater than zero", true); return; }
+      if (approvedAmt > 0 && Math.abs(amount - approvedAmt) > 0.005) {
+        overridden = true;
+        overrideReason = (document.getElementById("rsv-override-reason").value || "").trim();
+        if (!overrideReason) { showToast("Override reason is required when changing the approved amount", true); return; }
+      }
+    }
+
+    var picked = pool.find(function(t){return t.rma_emailtemplateid===sel.value;});
+    var tplLabel = picked ? ctx.reasonLabelFn(picked.rma_name) : cfg.label;
+    var emailBodyText = (bodyTa.value || "").trim();
+    var emailSubject = picked ? mergeTemplate(picked.rma_subject || ("RMA {claimNumber} — " + cfg.label), currentClaim) : ("RMA " + (currentClaim.rma_claimnumber||"") + " — " + cfg.label);
+    var doEmail = sendEmail && sendEmail.checked && currentClaim.rma_customeremail;
+    var recipient = currentClaim.rma_customeremail || "";
+    var userName = getUserName();
+
+    if (submitBtn) submitBtn.disabled = true;
+    if (sts) { sts.textContent = "Processing..."; sts.className = "send-status"; }
+
+    var emailBodyHtml = emailBodyText.replace(/\n/g, "<br/>");
+
+    var amtStr = cfg.requiresAmount ? " — $" + amount.toFixed(2) : "";
+    var noteSubject = cfg.label + amtStr + " (" + tplLabel + ")";
+    var noteBody = cfg.label + amtStr + " by " + userName + " on " + new Date().toLocaleString() + ".\n\n" +
+      "Template: " + tplLabel + "\n" +
+      (cfg.requiresAmount && overridden ? "AMOUNT OVERRIDDEN from approved $" + approvedAmt.toFixed(2) + " to $" + amount.toFixed(2) + "\nReason: " + overrideReason + "\n\n" : "") +
+      (doEmail ? "Email sent to: " + recipient + "\nSubject: " + emailSubject + "\n\n" : "No email sent.\n\n") +
+      "--- Body ---\n" + emailBodyText;
+
+    function apiPostP(path, body) {
+      return new Promise(function(resolve){
+        apiPost(path, body, function(err){
+          if (err) { try { console.warn("apiPost " + path + " failed:", err); } catch(e){} }
+          resolve();
+        });
+      });
+    }
+
+    function sendResolveEmail() {
+      if (!doEmail) return Promise.resolve();
+      var emailActivity = {
+        "subject": emailSubject,
+        "description": emailBodyHtml,
+        "directioncode": true,
+        "email_activity_parties": [
+          { "participationtypemask": 1, "partyid_systemuser@odata.bind": "/systemusers(c7c8c5d3-3541-f011-877a-000d3a596152)" },
+          { "participationtypemask": 2, "addressused": recipient }
+        ]
+      };
+      if (claimId) emailActivity["regardingobjectid_rma_claim@odata.bind"] = "/rma_claims(" + claimId + ")";
+      return new Promise(function(resolve){
+        try {
+          var req = new XMLHttpRequest();
+          req.open("POST", "/api/data/v9.2/emails", true);
+          req.setRequestHeader("Accept", "application/json");
+          req.setRequestHeader("Content-Type", "application/json");
+          req.setRequestHeader("Prefer", "return=representation");
+          req.onreadystatechange = function(){
+            if (req.readyState !== 4) return;
+            try {
+              if (req.status < 200 || req.status >= 300) { showToast("Email create failed " + req.status, true); return resolve(); }
+              var created = null;
+              try { created = JSON.parse(req.responseText); } catch(e) { return resolve(); }
+              var aid = created && created.activityid;
+              if (!aid) return resolve();
+              var sendReq = new XMLHttpRequest();
+              sendReq.open("POST", "/api/data/v9.2/emails(" + aid + ")/Microsoft.Dynamics.CRM.SendEmail", true);
+              sendReq.setRequestHeader("Accept", "application/json");
+              sendReq.setRequestHeader("Content-Type", "application/json");
+              sendReq.onreadystatechange = function(){ if (sendReq.readyState === 4) resolve(); };
+              sendReq.onerror = function(){ resolve(); };
+              sendReq.send(JSON.stringify({ "IssueSend": true }));
+            } catch(inner) { resolve(); }
+          };
+          req.onerror = function(){ resolve(); };
+          req.send(JSON.stringify(emailActivity));
+        } catch(outer) { resolve(); }
+      });
+    }
+
+    /* Build the rma_approvalhistory row */
+    var histRow = {
+      "rma_name": cfg.label + " by " + userName + (cfg.requiresAmount ? " — $" + amount.toFixed(2) : ""),
+      "rma_Claim@odata.bind": "/rma_claims(" + claimId + ")",
+      "rma_action": cfg.actionCode,
+      "rma_emailto": recipient || null,
+      "rma_emailbody": emailBodyText,
+      "rma_erpstatus": cfg.erp
+    };
+    if (cfg.requiresAmount) {
+      histRow["rma_amount"] = amount;
+      histRow["rma_amountoriginal"] = approvedAmt || amount;
+      histRow["rma_amountoverridden"] = overridden;
+      if (overridden) histRow["rma_overridereason"] = overrideReason;
+    }
+
+    function finish() {
+      if (sts) { sts.textContent = "Done."; sts.className = "send-status ok"; }
+      showToast(cfg.label + (doEmail ? " — email sent" : ""));
+      setStatus(cfg.label + (doEmail ? " (email sent)" : ""), "ok");
+      var mount = document.getElementById("compose-mount");
+      if (mount) { mount.innerHTML = ""; mount.style.display = "none"; }
+      if (submitBtn) submitBtn.disabled = false;
+    }
+
+    var done = false;
+    var stallTimer = setTimeout(function(){
+      if (done) return;
+      done = true;
+      try { refreshTimeline(); } catch(e){}
+      setResolutionFields(fc, cfg.resolution, cfg.label + amtStr, { skipNote: true });
+      finish();
+    }, 12000);
+
+    Promise.all([
+      createNote(claimId, noteSubject, noteBody),
+      apiPostP("rma_approvalhistories", histRow),
+      sendResolveEmail()
+    ]).then(function() {
+      if (done) return;
+      done = true;
+      clearTimeout(stallTimer);
+      try { refreshTimeline(); } catch(e) {}
+      setResolutionFields(fc, cfg.resolution, cfg.label + amtStr, { skipNote: true });
+      finish();
+    })["catch"](function(err){
+      if (done) return;
+      done = true;
+      clearTimeout(stallTimer);
+      try { console.error("Resolve side effects rejected:", err); } catch(e){}
+      showToast("Side-effect error — saving anyway", true);
+      setResolutionFields(fc, cfg.resolution, cfg.label + amtStr, { skipNote: true });
+      finish();
+    });
+  }
+
+  function handleDenyClaim() {
+    var fc = getFormContext();
+    if (!fc) return setStatus("Form context unavailable", "error");
+    if (!currentClaim) return setStatus("Claim not loaded.", "error");
+    setStatus("Loading denial reasons...", "");
+    fetchTemplates(function(err, templates) {
+      if (err) return setStatus("Failed to load templates: " + err, "error");
+      var denialTpls = (templates || []).filter(function(t){ return /^denial[:\-\s]/i.test(t.rma_name || ""); });
+      if (!denialTpls.length) return setStatus("No denial templates configured. Add templates named 'Denial: <reason>' under Email Templates.", "error");
+      openDenyReasonModal(denialTpls);
+    });
+  }
+
+  function openDenyReasonModal(denialTpls) {
+    var mount = document.getElementById("compose-mount");
+    if (!mount) return setStatus("UI mount missing.", "error");
+    var recipient = currentClaim.rma_customeremail || "";
+    var claimNum = currentClaim.rma_claimnumber || "";
+    var custName = currentClaim.rma_customername || "Customer";
+
+    /* Strip 'Denial:' prefix for display labels */
+    function reasonLabel(name) {
+      return (name || "").replace(/^denial[:\-\s]+/i, "").trim() || "Denied";
+    }
+
+    var h = '<div class="compose-pane">';
+    h += '<div class="compose-header"><div class="compose-title">\u274C Deny Claim ' + escapeHtml(claimNum) + '</div>';
+    h += '<button class="compose-close" data-deny="close" title="Cancel">\u2715</button></div>';
+    h += '<div class="compose-field"><div class="cf-label">Customer</div><div class="cf-static">' + escapeHtml(custName) + (recipient ? ' &lt;' + escapeHtml(recipient) + '&gt;' : ' (no email)') + '</div></div>';
+    h += '<div class="compose-field"><div class="cf-label">Reason (from Email Templates)</div><select id="deny-reason" style="width:100%;padding:8px;border:1px solid var(--border,#ddd);border-radius:6px;background:#fff;font-size:13px;">';
+    for (var i = 0; i < denialTpls.length; i++) {
+      h += '<option value="' + denialTpls[i].rma_emailtemplateid + '">' + escapeHtml(reasonLabel(denialTpls[i].rma_name)) + '</option>';
+    }
+    h += '</select></div>';
+    h += '<div class="compose-field"><div class="cf-label">Email body to customer (editable)</div>';
+    h += '<textarea id="deny-notes" rows="10" style="width:100%;padding:8px;border:1px solid var(--border,#ddd);border-radius:6px;font-size:13px;font-family:inherit;resize:vertical;"></textarea></div>';
+    h += '<div class="compose-field"><label style="display:flex;gap:8px;align-items:center;font-size:13px;cursor:pointer;"><input type="checkbox" id="deny-sendemail" checked' + (recipient ? '' : ' disabled') + '/> Send denial email to customer</label></div>';
+    h += '<div class="compose-actions"><button class="btn-cancel" data-deny="close">Cancel</button>';
+    h += '<button class="btn-send danger" data-deny="submit">Deny Claim</button></div>';
+    h += '<div id="deny-status" class="send-status"></div>';
+    h += '</div>';
+
+    mount.innerHTML = h;
+    mount.style.display = "block";
+
+    var sel = document.getElementById("deny-reason");
+    var notes = document.getElementById("deny-notes");
+    function syncTemplate() {
+      var picked = denialTpls.find(function(t){return t.rma_emailtemplateid===sel.value;});
+      if (picked) notes.value = mergeTemplate(picked.rma_body || "", currentClaim);
+    }
+    sel.addEventListener("change", syncTemplate);
+    syncTemplate();
+
+    /* Stash for submit */
+    window.__denyTpls = denialTpls;
+    window.__denyReasonLabel = reasonLabel;
+
+    mount.querySelectorAll("[data-deny]").forEach(function(b){
+      b.addEventListener("click", function(){
+        var act = b.getAttribute("data-deny");
+        if (act === "close") { mount.innerHTML = ""; mount.style.display = "none"; }
+        if (act === "submit") submitDenyClaim();
+      });
+    });
+    setStatus("", "");
+  }
+
+  function submitDenyClaim() {
+    var fc = getFormContext();
+    var claimId = getRecordId();
+    var sel = document.getElementById("deny-reason");
+    var notes = document.getElementById("deny-notes");
+    var sendEmail = document.getElementById("deny-sendemail");
+    var sts = document.getElementById("deny-status");
+    var submitBtn = document.querySelector('[data-deny="submit"]');
+
+    var denialTpls = window.__denyTpls || [];
+    var reasonLabelFn = window.__denyReasonLabel || function(n){return n;};
+    var picked = denialTpls.find(function(t){return t.rma_emailtemplateid===sel.value;});
+    var reasonLabel = picked ? reasonLabelFn(picked.rma_name) : "Denied";
+    var emailBodyText = (notes.value || "").trim();
+    var emailSubject = picked ? mergeTemplate(picked.rma_subject || "RMA {claimnumber} \u2014 Claim Decision", currentClaim) : ("RMA " + (currentClaim.rma_claimnumber||"") + " \u2014 Claim Decision");
+    var doEmail = sendEmail && sendEmail.checked && currentClaim.rma_customeremail;
+    var recipient = currentClaim.rma_customeremail || "";
+    var userName = getUserName();
+
+    if (submitBtn) submitBtn.disabled = true;
+    if (sts) { sts.textContent = "Processing...", sts.className = "send-status"; }
+
+    var emailBodyHtml = emailBodyText.replace(/\n/g, "<br/>");
+
+    var noteSubject = "Claim Denied \u2014 " + reasonLabel;
+    var noteBody = "Claim denied by " + userName + " on " + new Date().toLocaleString() + ".\n\n" +
+      "Reason: " + reasonLabel + "\n" +
+      (doEmail ? "\nDenial email sent to: " + recipient + "\nSubject: " + emailSubject : "\nNo email sent (customer email blank or skipped).");
+
+    /* Wrap apiPost in a Promise so we can await it */
+    function apiPostP(path, body) {
+      return new Promise(function(resolve){
+        apiPost(path, body, function(err){
+          if (err) { try { console.warn("apiPost " + path + " failed:", err); } catch(e){} }
+          resolve();
+        });
+      });
+    }
+
+    /* Email create + send wrapped in a Promise */
+    function sendDenialEmail() {
+      if (!doEmail) return Promise.resolve();
+      var emailActivity = {
+        "subject": emailSubject,
+        "description": emailBodyHtml,
+        "directioncode": true,
+        "email_activity_parties": [
+          { "participationtypemask": 1, "partyid_systemuser@odata.bind": "/systemusers(c7c8c5d3-3541-f011-877a-000d3a596152)" },
+          { "participationtypemask": 2, "addressused": recipient }
+        ]
+      };
+      if (claimId) emailActivity["regardingobjectid_rma_claim@odata.bind"] = "/rma_claims(" + claimId + ")";
+
+      return new Promise(function(resolve){
+        try {
+          var req = new XMLHttpRequest();
+          req.open("POST", "/api/data/v9.2/emails", true);
+          req.setRequestHeader("Accept", "application/json");
+          req.setRequestHeader("Content-Type", "application/json");
+          req.setRequestHeader("Prefer", "return=representation");
+          req.onreadystatechange = function(){
+            if (req.readyState !== 4) return;
+            try {
+              if (req.status < 200 || req.status >= 300) {
+                try { console.warn("Email create failed:", req.status, req.responseText); } catch(e){}
+                showToast("Email create failed " + req.status, true);
+                return resolve();
+              }
+              var created = null;
+              try { created = JSON.parse(req.responseText); } catch(e) { console.warn("Email parse failed:", e); return resolve(); }
+              var aid = created && created.activityid;
+              if (!aid) return resolve();
+              var sendReq = new XMLHttpRequest();
+              sendReq.open("POST", "/api/data/v9.2/emails(" + aid + ")/Microsoft.Dynamics.CRM.SendEmail", true);
+              sendReq.setRequestHeader("Accept", "application/json");
+              sendReq.setRequestHeader("Content-Type", "application/json");
+              sendReq.onreadystatechange = function(){
+                if (sendReq.readyState !== 4) return;
+                try { if (sendReq.status >= 400) console.warn("SendEmail failed:", sendReq.status, sendReq.responseText); } catch(e){}
+                resolve();
+              };
+              sendReq.onerror = function(){ resolve(); };
+              sendReq.send(JSON.stringify({ "IssueSend": true }));
+            } catch(inner) {
+              try { console.error("sendDenialEmail inner error:", inner); } catch(e){}
+              resolve();
+            }
+          };
+          req.onerror = function(){ resolve(); };
+          req.send(JSON.stringify(emailActivity));
+        } catch(outer) {
+          try { console.error("sendDenialEmail outer error:", outer); } catch(e){}
+          resolve();
+        }
+      });
+    }
+
+    function finish() {
+      if (sts) { sts.textContent = "Done."; sts.className = "send-status ok"; }
+      showToast("Claim denied" + (doEmail ? " \u2014 email sent" : ""));
+      setStatus("Claim denied" + (doEmail ? " (email sent)" : ""), "ok");
+      var mount = document.getElementById("compose-mount");
+      if (mount) { mount.innerHTML = ""; mount.style.display = "none"; }
+      if (submitBtn) submitBtn.disabled = false;
+    }
+
+    /* Safety timeout: if Promise.all stalls for any reason, force-finish after 10s */
+    var done = false;
+    var stallTimer = setTimeout(function(){
+      if (done) return;
+      done = true;
+      try { console.warn("Deny side effects timed out — proceeding to save"); } catch(e){}
+      if (sts) { sts.textContent = "Side-effect timeout \u2014 saving claim"; sts.className = "send-status"; }
+      try { refreshTimeline(); } catch(e){}
+      setResolutionFields(fc, RESOLUTION.DENIED, "Claim Denied", { skipNote: true });
+      finish();
+    }, 10000);
+
+    /* CRITICAL ORDER: run all side-effect XHRs FIRST (note, approval history, email),
+       THEN save the claim. Save triggers form reload which cancels in-flight XHRs,
+       so anything that hasn't completed before save() will be lost. */
+    Promise.all([
+      createNote(claimId, noteSubject, noteBody),
+      apiPostP("rma_approvalhistories", {
+        "rma_name": "Denied by " + userName + " \u2014 " + reasonLabel,
+        "rma_Claim@odata.bind": "/rma_claims(" + claimId + ")",
+        "rma_action": 100000001
+      }),
+      sendDenialEmail()
+    ]).then(function() {
+      if (done) return;
+      done = true;
+      clearTimeout(stallTimer);
+      try { refreshTimeline(); } catch(e) {}
+      setResolutionFields(fc, RESOLUTION.DENIED, "Claim Denied", { skipNote: true });
+      finish();
+    })["catch"](function(err){
+      if (done) return;
+      done = true;
+      clearTimeout(stallTimer);
+      try { console.error("Deny side effects rejected:", err); } catch(e){}
+      showToast("Side-effect error \u2014 saving anyway", true);
+      setResolutionFields(fc, RESOLUTION.DENIED, "Claim Denied", { skipNote: true });
+      finish();
+    });
+  }
+
+  function handleRequestApproval() {
+    var fc = getFormContext();
+    if (!fc) return setStatus("Form context unavailable", "error");
+    var creditAttr = fc.getAttribute("rma_creditamount");
+    var amount = creditAttr ? (creditAttr.getValue() || 0) : 0;
+    var claimId = getRecordId();
+
+    xrmConfirm("Create approval request for $" + amount.toFixed(2) + "?\n\nPlant approvers will be notified via Teams.", "Request Approval").then(function(r) {
+      if (!r.confirmed) return;
+      setStatus("Creating approval request...", "");
+      createApprovalRecord(claimId, amount, "Manual request from claim form").then(function() {
+        showToast("Approval request created ✔");
+        setStatus("Approval request created — awaiting manager", "ok");
+        createNote(claimId, "Approval requested — $" + amount.toFixed(2),
+          "Manager approval requested by " + getUserName() + " on " + new Date().toLocaleString() +
+          ".\n\nAmount: $" + amount.toFixed(2) + "\nReason: Manual request from claim form\n\nTeams Approval card sent to plant approver(s)."
+        ).then(function() { refreshTimeline(); });
+      }, function(e) {
+        showToast("Approval failed: " + e, true);
+        setStatus("Approval failed: " + e, "error");
+      });
+    }).catch(function(e) {
+      showToast("Error: " + (e.message || e), true);
+      setStatus("Error: " + (e.message || e), "error");
+    });
+  }
+
+  /* ── Inline email composer ── */
+  function openComposer(preselect) {
+    if (!currentClaim) return setStatus("Claim not loaded.", "error");
+    var recipient = currentClaim.rma_customeremail || "";
+    if (!recipient) return setStatus("Customer Email is blank on this claim.", "error");
+
+    var mount = document.getElementById("compose-mount");
+    if (!mount) return;
+
+    fetchTemplates(function(err, templates) {
+      var allTpls = err ? [] : templates;
+      var selectedTpl = null, mergedSubject = "", mergedBody = "";
+
+      if (preselect && allTpls.length) {
+        selectedTpl = findTemplate(allTpls, preselect);
+        if (selectedTpl) {
+          mergedSubject = mergeTemplate(selectedTpl.rma_subject || "", currentClaim);
+          mergedBody = mergeTemplate(selectedTpl.rma_body || "", currentClaim);
+        }
+      }
+      if (!mergedSubject) mergedSubject = "RMA " + (currentClaim.rma_claimnumber || "") + " \u2014 update from HKP";
+
+      var h = '<div class="compose-pane">';
+      h += '<div class="compose-header"><div class="compose-title">\u2709\uFE0F Compose Email</div>';
+      h += '<button class="compose-close" data-compose="close" title="Cancel">\u2715</button></div>';
+
+      h += '<div class="compose-field"><div class="cf-label">To</div><div class="cf-static">' + escapeHtml(recipient) + '</div></div>';
+
+      if (allTpls.length) {
+        h += '<div class="compose-field"><div class="cf-label">Template</div><div class="compose-templates">';
+        for (var t = 0; t < allTpls.length; t++) {
+          var tp = allTpls[t], isAct = selectedTpl && tp.rma_emailtemplateid === selectedTpl.rma_emailtemplateid;
+          h += '<button class="tpl-pill' + (isAct ? ' active' : '') + '" data-tplid="' + tp.rma_emailtemplateid + '">' + escapeHtml(tp.rma_name || "Template") + '</button>';
+        }
+        h += '<button class="tpl-pill' + (!selectedTpl ? ' active' : '') + '" data-tplid="__blank">Blank</button>';
+        h += '</div></div>';
+      }
+
+      h += '<div class="compose-field"><div class="cf-label">Subject</div>';
+      h += '<input type="text" id="compose-subject" value="' + escapeHtml(mergedSubject) + '" /></div>';
+      h += '<div class="compose-field"><div class="cf-label">Body</div>';
+      h += '<textarea id="compose-body">' + escapeHtml(mergedBody) + '</textarea></div>';
+
+      h += '<div class="compose-actions">';
+      h += '<button class="btn-send" data-compose="send">\u2709 Send &amp; Log</button>';
+      h += '<button class="btn-cancel" data-compose="close">Cancel</button>';
+      h += '<span id="compose-send-status" class="send-status"></span></div>';
+      h += '</div>';
+
+      mount.innerHTML = h;
+      mount.style.display = "block";
+      var subj = document.getElementById("compose-subject");
+      if (subj) subj.focus();
+    });
+  }
+
+  function closeComposer() {
+    var mount = document.getElementById("compose-mount");
+    if (mount) { mount.innerHTML = ""; mount.style.display = "none"; }
+  }
+
+  function handleComposeSend() {
+    var subj = document.getElementById("compose-subject");
+    var body = document.getElementById("compose-body");
+    var sts = document.getElementById("compose-send-status");
+    if (!subj || !body) return;
+    if (!subj.value.trim()) { sts.textContent = "Subject required."; sts.className = "send-status error"; return; }
+
+    var sendBtn = document.querySelector('[data-compose="send"]');
+    if (sendBtn) sendBtn.disabled = true;
+    sts.textContent = "Sending..."; sts.className = "send-status";
+
+    var claimId = getRecordId();
+    var recipient = currentClaim.rma_customeremail || "";
+    var bodyHtml = body.value.trim().replace(/\n/g, "<br/>");
+
+    /* Create Email activity with From (current user) and To (customer) */
+    var emailActivity = {
+      "subject": subj.value.trim(),
+      "description": bodyHtml,
+      "directioncode": true,
+      "email_activity_parties": [
+        { "participationtypemask": 1, "partyid_systemuser@odata.bind": "/systemusers(c7c8c5d3-3541-f011-877a-000d3a596152)" },
+        { "participationtypemask": 2, "addressused": recipient }
+      ]
+    };
+    if (claimId) emailActivity["regardingobjectid_rma_claim@odata.bind"] = "/rma_claims(" + claimId + ")";
+
+    /* POST email → get back activityid → call SendEmail */
+    var req = new XMLHttpRequest();
+    req.open("POST", "/api/data/v9.2/emails", true);
+    req.setRequestHeader("Accept", "application/json");
+    req.setRequestHeader("Content-Type", "application/json");
+    req.setRequestHeader("OData-Version", "4.0");
+    req.setRequestHeader("OData-MaxVersion", "4.0");
+    req.setRequestHeader("Prefer", "return=representation");
+    req.onreadystatechange = function() {
+      if (req.readyState !== 4) return;
+      if (req.status < 200 || req.status >= 300) {
+        sts.textContent = "Failed: " + req.status; sts.className = "send-status error";
+        if (sendBtn) sendBtn.disabled = false;
+        showToast("Email create failed.", true);
+        return;
+      }
+      var created = JSON.parse(req.responseText);
+      var activityId = created.activityid;
+      /* Now send it via SendEmail action */
+      var sendReq = new XMLHttpRequest();
+      sendReq.open("POST", "/api/data/v9.2/emails(" + activityId + ")/Microsoft.Dynamics.CRM.SendEmail", true);
+      sendReq.setRequestHeader("Accept", "application/json");
+      sendReq.setRequestHeader("Content-Type", "application/json");
+      sendReq.setRequestHeader("OData-Version", "4.0");
+      sendReq.onreadystatechange = function() {
+        if (sendReq.readyState !== 4) return;
+        if (sendReq.status >= 200 && sendReq.status < 300) {
+          showToast("Email sent \u2714 \u2014 " + recipient);
+        } else {
+          showToast("Logged but send failed (check mailbox config)", true);
+        }
+        closeComposer();
+        setStatus("Email sent.", "ok");
+      };
+      sendReq.send(JSON.stringify({ "IssueSend": true }));
+    };
+    req.send(JSON.stringify(emailActivity));
+  }
+
+  function handleTemplateSwitch(tplId) {
+    if (!currentClaim) return;
+    fetchTemplates(function(err, templates) {
+      if (err) return;
+      var subj = document.getElementById("compose-subject"), body = document.getElementById("compose-body");
+      if (!subj || !body) return;
+      var pills = document.querySelectorAll(".tpl-pill");
+      for (var p = 0; p < pills.length; p++) pills[p].classList.remove("active");
+      var clicked = document.querySelector('[data-tplid="' + tplId + '"]');
+      if (clicked) clicked.classList.add("active");
+      if (tplId === "__blank") { subj.value = "RMA " + (currentClaim.rma_claimnumber || "") + " \u2014 update from HKP"; body.value = ""; subj.focus(); return; }
+      for (var i = 0; i < templates.length; i++) {
+        if (templates[i].rma_emailtemplateid === tplId) {
+          subj.value = mergeTemplate(templates[i].rma_subject || "", currentClaim);
+          body.value = mergeTemplate(templates[i].rma_body || "", currentClaim);
+          body.focus(); return;
+        }
+      }
+    });
+  }
+
+  /* ── Helper: data row (editable or read-only) ── */
+  var FIELD_MAP = {
+    "rma_customername": { type: "text" },
+    "rma_contactname": { type: "text" },
+    "rma_customeremail": { type: "text" },
+    "rma_partnumber": { type: "text" },
+    "rma_quantity": { type: "number" },
+    "rma_creditamount": { type: "number", currency: true },
+    "rma_failuredescription": { type: "text" },
+    "rma_failuremode": { type: "picklist", options: [
+      { v: 100000000, l: "Mechanical Failure" }, { v: 100000001, l: "Electrical Failure" },
+      { v: 100000002, l: "Cosmetic Damage" }, { v: 100000003, l: "Performance Issue" },
+      { v: 100000004, l: "DOA - Dead on Arrival" }, { v: 100000005, l: "Other" }
+    ]},
+    "rma_warrantystatus": { type: "picklist", options: [
+      { v: 100000000, l: "In Warranty" }, { v: 100000001, l: "Out of Warranty" },
+      { v: 100000002, l: "Extended Warranty" }, { v: 100000003, l: "Unknown" }
+    ]},
+    "rma_status": { type: "picklist", options: [
+      { v: 100000000, l: "New" }, { v: 100000001, l: "Triage" },
+      { v: 100000002, l: "Investigation" }, { v: 100000003, l: "Decision" },
+      { v: 100000004, l: "Closed" }
+    ]}
+  };
+
+  function drow(label, value, fieldName) {
+    var cls = value ? '' : ' empty';
+    var editable = fieldName && FIELD_MAP[fieldName];
+    if (editable) {
+      return '<div class="data-row"><span class="d-label">' + label + '</span><span class="d-value editable' + cls + '" data-field="' + fieldName + '" title="Click to edit">' + escapeHtml(value || "\u2014") + '</span></div>';
+    }
+    return '<div class="data-row"><span class="d-label">' + label + '</span><span class="d-value' + cls + '">' + escapeHtml(value || "\u2014") + '</span></div>';
+  }
+
+  function startEdit(el) {
+    if (el.querySelector('.edit-input') || el.querySelector('.edit-select')) return;
+    var field = el.getAttribute('data-field');
+    var fm = FIELD_MAP[field];
+    if (!fm) return;
+    var fc = getFormContext();
+
+    if (fm.type === 'picklist') {
+      var curVal = null;
+      if (fc) { try { curVal = fc.getAttribute(field).getValue(); } catch (e) {} }
+      var html = '<select class="edit-select">';
+      html += '<option value="">— none —</option>';
+      for (var oi = 0; oi < fm.options.length; oi++) {
+        var o = fm.options[oi];
+        html += '<option value="' + o.v + '"' + (o.v === curVal ? ' selected' : '') + '>' + escapeHtml(o.l) + '</option>';
+      }
+      html += '</select>';
+      el.innerHTML = html;
+      var sel = el.querySelector('.edit-select');
+      sel.focus();
+      sel.addEventListener('change', function() {
+        var val = sel.value === '' ? null : Number(sel.value);
+        saveField(field, val, true);
+      });
+      sel.addEventListener('blur', function() { setTimeout(function() { renderCurrentClaim(); }, 150); });
+      return;
+    }
+
+    var currentVal = '';
+    if (fc) {
+      try {
+        var attr = fc.getAttribute(field);
+        if (attr) {
+          var v = attr.getValue();
+          currentVal = v != null ? String(v) : '';
+        }
+      } catch (e) {}
+    }
+    if (!currentVal) currentVal = el.textContent === '\u2014' ? '' : el.textContent;
+    var inputType = fm.type === 'number' ? 'number' : 'text';
+    el.innerHTML = '<input class="edit-input" type="' + inputType + '" value="' + escapeHtml(currentVal) + '" />';
+    var inp = el.querySelector('.edit-input');
+    inp.focus();
+    inp.select();
+    inp.addEventListener('keydown', function(ev) {
+      if (ev.key === 'Enter') { inp.blur(); }
+      if (ev.key === 'Escape') { renderCurrentClaim(); }
+    });
+    inp.addEventListener('blur', function() { saveField(field, inp.value, false); });
+  }
+
+  function saveField(field, rawValue, isPicklist) {
+    var fc = getFormContext();
+    if (!fc) { showToast('Form context unavailable.', true); renderCurrentClaim(); return; }
+    var attr = fc.getAttribute(field);
+    if (!attr) { showToast('Field not found: ' + field, true); renderCurrentClaim(); return; }
+    var fm = FIELD_MAP[field];
+    var value = isPicklist ? rawValue : (typeof rawValue === 'string' ? rawValue.trim() : rawValue);
+    if (!isPicklist && fm.type === 'number') {
+      value = value === '' ? null : Number(value);
+      if (value !== null && isNaN(value)) { showToast('Invalid number.', true); renderCurrentClaim(); return; }
+    }
+    if (!isPicklist) value = (value === '' ? null : value);
+    attr.setValue(value);
+    attr.setSubmitMode('always');
+    showToast('Updated: ' + field.replace('rma_', ''));
+    /* Re-read from form context and re-render */
+    setTimeout(function() { refreshFromForm(); }, 200);
+  }
+
+  function refreshFromForm() {
+    var id = getRecordId();
+    if (!id) return;
+    fetchClaim(id, function(err, claim) { if (!err && claim) render(claim); });
+  }
+
+  function renderCurrentClaim() {
+    if (currentClaim) render(currentClaim);
+  }
+
+  /* ── Render ── */
+  function render(claim) {
+    currentClaim = claim;
+    var statusVal = claim.rma_status, currentIdx = -1, i;
+    for (i = 0; i < STAGES.length; i++) { if (STAGES[i].value === statusVal) { currentIdx = i; break; } }
+    var stageAge = claim.rma_stageenteredon ? daysBetween(claim.rma_stageenteredon, new Date()) : null;
+    var totalAge = (claim.createdon || claim.rma_createddate) ? daysBetween(claim.createdon || claim.rma_createddate, new Date()) : null;
+    var currentStage = currentIdx >= 0 ? STAGES[currentIdx] : null;
+    var statusLabel = claim["rma_status@OData.Community.Display.V1.FormattedValue"] || (currentStage ? currentStage.label : "");
+    var warrantyLabel = claim["rma_warrantystatus@OData.Community.Display.V1.FormattedValue"] || "";
+    var failureModeLabel = claim["rma_failuremode@OData.Community.Display.V1.FormattedValue"] || "";
+    var plantLabel = claim["_rma_assignedplant_value@OData.Community.Display.V1.FormattedValue"] || "";
+
+    var html = '<div class="tracker">';
+
+    /* ── Stage dots ── */
+    html += '<div class="track-row">';
+    for (i = 0; i < STAGES.length; i++) {
+      var s = STAGES[i], cls = 'step';
+      if (currentIdx >= 0 && i < currentIdx) cls += ' done';
+      if (i === currentIdx) cls += ' current';
+      var sv = i === currentIdx ? ('style="--current-color:' + s.color + '"') : '';
+      html += '<div class="' + cls + '" ' + sv + '><div class="dot">' + (i === currentIdx ? '!' : (i < currentIdx ? '\u2713' : (i + 1))) + '</div><div class="label">' + s.label + '</div></div>';
+      if (i < STAGES.length - 1) html += '<div class="connector' + (currentIdx >= 0 && i < currentIdx ? ' done' : '') + '"></div>';
+    }
+    html += '</div>';
+
+    /* ── Meta row ── */
+    html += '<div class="meta-row">';
+    if (currentStage) {
+      var pillClass = stageAge >= 7 ? 'stale' : (stageAge <= 1 ? 'fresh' : 'normal');
+      html += '<div class="meta-item"><span>In </span><b>' + currentStage.label + '</b><span> for </span><span class="meta-pill ' + pillClass + '">' + (stageAge != null ? (stageAge + 'd') : 'now') + '</span></div>';
+    }
+    if (totalAge != null) html += '<div class="meta-item">Age: <b>' + totalAge + 'd</b></div>';
+    if (claim.rma_claimnumber) html += '<div class="meta-item" style="margin-left:auto"><b>' + escapeHtml(claim.rma_claimnumber) + '</b></div>';
+    html += '</div>';
+
+    /* ── Two-column body ── */
+    html += '<div class="columns">';
+
+    /* LEFT: Claim summary */
+    html += '<div class="col-left">';
+
+    html += '<div class="panel"><div class="panel-head"><span class="panel-icon">\uD83D\uDC64</span> Customer Information</div><div class="panel-body">';
+    html += drow("Customer", claim.rma_customername, "rma_customername");
+    html += drow("Contact", claim.rma_contactname, "rma_contactname");
+    html += drow("Email", claim.rma_customeremail, "rma_customeremail");
+    html += '</div></div>';
+
+    html += '<div class="panel"><div class="panel-head"><span class="panel-icon">\u2699\uFE0F</span> Part Information</div><div class="panel-body">';
+    html += drow("Part Number", claim.rma_partnumber, "rma_partnumber");
+    html += drow("Quantity", claim.rma_quantity != null ? String(claim.rma_quantity) : "", "rma_quantity");
+    html += drow("Failure Mode", failureModeLabel, "rma_failuremode");
+    html += drow("Description", claim.rma_failuredescription, "rma_failuredescription");
+    html += '</div></div>';
+
+    html += '<div class="panel"><div class="panel-head"><span class="panel-icon">\uD83D\uDCB0</span> Warranty &amp; Financial</div><div class="panel-body">';
+    html += drow("Warranty", warrantyLabel, "rma_warrantystatus");
+    html += drow("Credit Amt", fmtCurrency(claim.rma_creditamount), "rma_creditamount");
+    html += drow("Status", statusLabel, "rma_status");
+    html += drow("Plant", plantLabel);
+    html += '</div></div>';
+
+    html += '</div>'; /* /col-left */
+
+    /* RIGHT: Actions */
+    html += '<div class="col-right">';
+
+    /* Composer mount (appears here when email btn clicked) */
+    html += '<div id="compose-mount" style="display:none"></div>';
+
+    /* Email Communication */
+    html += '<div class="panel"><div class="panel-head"><span class="panel-icon">\u2709\uFE0F</span> Customer Communication</div><div class="panel-body"><div class="action-list">';
+    html += '<button class="act-btn" data-act="submission"><span class="act-icon">\u2709</span> Submission Confirmation</button>';
+    html += '<button class="act-btn" data-act="status"><span class="act-icon">\u2709</span> Status Update</button>';
+    html += '<button class="act-btn" data-act="custom"><span class="act-icon">\u270F\uFE0F</span> Custom Email</button>';
+    html += '</div></div></div>';
+
+    /* Resolution */
+    html += '<div class="panel"><div class="panel-head"><span class="panel-icon">\u2705</span> Resolution</div><div class="panel-body"><div class="action-list">';
+    html += '<button class="act-btn resolve" data-act="credit"><span class="act-icon">\uD83D\uDCB3</span> Issue Credit</button>';
+    html += '<button class="act-btn resolve" data-act="replacement"><span class="act-icon">\uD83D\uDCE6</span> Send Replacement</button>';
+    html += '<button class="act-btn resolve" data-act="repair"><span class="act-icon">\uD83D\uDD27</span> Repair Completed</button>';
+    html += '<button class="act-btn resolve" data-act="other"><span class="act-icon">\u2699</span> Other Action...</button>';
+    html += '<button class="act-btn danger" data-act="deny"><span class="act-icon">\u274C</span> Deny Claim</button>';
+    html += '</div></div></div>';
+
+    /* Request Approval */
+    html += '<div class="panel"><div class="panel-head"><span class="panel-icon">\uD83D\uDCCB</span> Approval</div><div class="panel-body"><div class="action-list">';
+    html += '<button class="act-btn warn" data-act="approval"><span class="act-icon">\uD83D\uDCE8</span> Request Manager Approval</button>';
+    html += '</div></div></div>';
+
+    html += '<div id="tracker-status" class="status-line"></div>';
+    html += '</div>'; /* /col-right */
+
+    html += '</div>'; /* /columns */
+    html += '</div>'; /* /tracker */
+    document.getElementById('root').innerHTML = html;
+  }
+
+  function showError(msg) {
+    document.getElementById('root').innerHTML = '<div class="empty">' + (msg || 'Could not load claim.') + '</div>';
+  }
+
+  /* ── Event delegation ── */
+  document.addEventListener('click', function(ev) {
+    /* Inline edit */
+    var editable = ev.target.closest('.d-value.editable');
+    if (editable && !editable.querySelector('.edit-input')) { startEdit(editable); return; }
+
+    var composeBtn = ev.target.closest('[data-compose]');
+    if (composeBtn) {
+      var ca = composeBtn.getAttribute('data-compose');
+      if (ca === 'close') return closeComposer();
+      if (ca === 'send') return handleComposeSend();
+    }
+    var tplPill = ev.target.closest('[data-tplid]');
+    if (tplPill) return handleTemplateSwitch(tplPill.getAttribute('data-tplid'));
+
+    var btn = ev.target.closest('[data-act]');
+    if (!btn) return;
+    var act = btn.getAttribute('data-act');
+    if (act === 'submission') return openComposer('submission');
+    if (act === 'status') return openComposer('status');
+    if (act === 'custom') return openComposer(null);
+    if (act === 'approval') return handleRequestApproval();
+    if (act === 'deny') return handleDenyClaim();
+    if (act === 'credit') return handleResolveCredit();
+    if (act === 'replacement') return handleResolveReplacement();
+    if (act === 'repair') return handleResolveRepair();
+    if (act === 'other') return handleResolveOther();
+  });
+
+  function init() {
+    var id = getRecordId();
+    if (!id) {
+      setTimeout(function() {
+        var retryId = getRecordId();
+        if (!retryId) return showError('No claim selected.');
+        fetchClaim(retryId, function(err, claim) { if (err) showError(err); else render(claim); });
+      }, 800);
+      return;
+    }
+    fetchClaim(id, function(err, claim) { if (err) showError(err); else render(claim); });
+  }
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') init();
+  else document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+</body>
+</html>

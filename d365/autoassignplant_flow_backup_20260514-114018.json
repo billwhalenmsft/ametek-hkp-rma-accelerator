@@ -1,0 +1,192 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "$authentication": {
+      "defaultValue": {},
+      "type": "SecureObject"
+    },
+    "$connections": {
+      "defaultValue": {},
+      "type": "Object"
+    }
+  },
+  "triggers": {
+    "When_a_new_RMA_claim_is_created": {
+      "type": "OpenApiConnectionWebhook",
+      "inputs": {
+        "parameters": {
+          "subscriptionRequest/message": 1,
+          "subscriptionRequest/entityname": "rma_claim",
+          "subscriptionRequest/scope": 4,
+          "subscriptionRequest": {
+            "filteringattributes": "rma_partnumber",
+            "scope": 4,
+            "message": 1,
+            "entityname": "rma_claim",
+            "runas": 1
+          },
+          "subscriptionRequest/name": "98f4965b-2e4e-f111-bec6-000d3a5aed87"
+        },
+        "host": {
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+          "connectionName": "shared_commondataserviceforapps",
+          "operationId": "SubscribeWebhookTrigger"
+        },
+        "authentication": "@parameters('$authentication')"
+      }
+    }
+  },
+  "actions": {
+    "For_each_rule": {
+      "foreach": "@outputs('List_Active_Routing_Rules')?['body/value']",
+      "actions": {
+        "Skip_if_already_matched": {
+          "actions": {
+            "Check_prefix_match": {
+              "actions": {
+                "Set_AssignedPlantId": {
+                  "type": "SetVariable",
+                  "inputs": {
+                    "name": "AssignedPlantId",
+                    "value": "@items('For_each_rule')?['_rma_assignedplant_value']"
+                  }
+                }
+              },
+              "else": {
+                "actions": {}
+              },
+              "expression": {
+                "and": [
+                  {
+                    "greater": [
+                      "@length(coalesce(items('For_each_rule')?['rma_matchvalue'], ''))",
+                      0
+                    ]
+                  },
+                  {
+                    "startsWith": [
+                      "@toUpper(variables('PartNumber'))",
+                      "@toUpper(items('For_each_rule')?['rma_matchvalue'])"
+                    ]
+                  }
+                ]
+              },
+              "type": "If"
+            }
+          },
+          "else": {
+            "actions": {}
+          },
+          "expression": {
+            "equals": [
+              "@variables('AssignedPlantId')",
+              ""
+            ]
+          },
+          "type": "If"
+        }
+      },
+      "runAfter": {
+        "List_Active_Routing_Rules": [
+          "Succeeded"
+        ]
+      },
+      "type": "Foreach"
+    },
+    "Update_RMA_Claim": {
+      "actions": {
+        "Update_a_row": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "entityName": "rma_claims",
+              "recordId": "@triggerOutputs()?['body/rma_claimid']"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "UpdateRecord"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        }
+      },
+      "runAfter": {
+        "For_each_rule": [
+          "Succeeded"
+        ]
+      },
+      "else": {
+        "actions": {}
+      },
+      "expression": {
+        "and": [
+          {
+            "not": [
+              {
+                "equals": [
+                  "@variables('AssignedPlantId')",
+                  ""
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "type": "If"
+    },
+    "Initialize_AssignedPlantId": {
+      "runAfter": {
+        "Initialize_PartNumber": [
+          "Succeeded"
+        ]
+      },
+      "type": "InitializeVariable",
+      "inputs": {
+        "variables": [
+          {
+            "name": "AssignedPlantId",
+            "type": "string",
+            "value": ""
+          }
+        ]
+      }
+    },
+    "List_Active_Routing_Rules": {
+      "runAfter": {
+        "Initialize_AssignedPlantId": [
+          "Succeeded"
+        ]
+      },
+      "type": "OpenApiConnection",
+      "inputs": {
+        "parameters": {
+          "entityName": "rma_routingrules",
+          "$select": "rma_name,rma_matchvalue,_rma_assignedplant_value",
+          "$filter": "rma_isactive eq true",
+          "$orderby": "rma_priority asc"
+        },
+        "host": {
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+          "connectionName": "shared_commondataserviceforapps",
+          "operationId": "ListRecords"
+        },
+        "authentication": "@parameters('$authentication')"
+      }
+    },
+    "Initialize_PartNumber": {
+      "runAfter": {},
+      "type": "InitializeVariable",
+      "inputs": {
+        "variables": [
+          {
+            "name": "PartNumber",
+            "type": "string",
+            "value": "@coalesce(triggerOutputs()?['body/rma_partnumber'], '')"
+          }
+        ]
+      }
+    }
+  }
+}

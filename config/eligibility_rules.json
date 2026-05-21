@@ -1,0 +1,69 @@
+{
+  "_description": "Eligibility rules and confidence thresholds. Tunable per customer / OEM contract.",
+  "_lastUpdated": "2026-05-05",
+  "_calibrationStatus": "STARTER — confirm thresholds with HKP customer, especially borderline grace days",
+
+  "thresholds": {
+    "humanReviewConfidence": 0.70,
+    "_humanReviewNote": "Any disposition with confidence below this triggers Request Manager Approval flow even if auto-approve",
+
+    "borderlineGraceDays": 90,
+    "_borderlineNote": "RMAs filed within N days past warranty end → unclear (request more info or goodwill consideration)",
+
+    "minDescriptionChars": 60,
+    "_minDescNote": "Descriptions shorter than this → unclear, request_more_info"
+  },
+
+  "ruleOrder": [
+    "R5_misuse_keywords_first",
+    "R4_too_short_description",
+    "R2_well_past_warranty",
+    "R3_borderline_warranty",
+    "R1_in_warranty_defect_match",
+    "R_install_environment",
+    "R_in_warranty_default_unclear"
+  ],
+
+  "rules": {
+    "R5_misuse_keywords_first": {
+      "description": "Any misuse keyword detected → ineligible regardless of warranty status",
+      "verdict": "ineligible",
+      "reason": "Description contains misuse keywords (water/impact/surge/etc.) — warranty exclusion under HKP terms",
+      "appliesIf": "any keyword from failure_modes.json:misuse appears in ProblemDescription"
+    },
+    "R4_too_short_description": {
+      "description": "Description under 60 chars or no failure mode keyword → cannot decide",
+      "verdict": "unclear",
+      "reason": "Description too short to evaluate failure mode. Need more detail.",
+      "evidenceGaps": ["failure_mode_detail", "photos_or_video", "error_codes_if_any", "duty_cycle_history"]
+    },
+    "R2_well_past_warranty": {
+      "description": "More than 90 days past warranty end → ineligible",
+      "verdict": "ineligible",
+      "reasonTemplate": "Out of warranty by {daysPastWarranty} days (more than {borderlineGraceDays}-day grace). Recommend offering paid repair quote."
+    },
+    "R3_borderline_warranty": {
+      "description": "Within 0-90 days past warranty end → unclear",
+      "verdict": "unclear",
+      "reasonTemplate": "Just past warranty (+{daysPastWarranty} days, within {borderlineGraceDays}-day grace). Need usage data + duty cycle.",
+      "evidenceGaps": ["customer_usage_logs", "duty_cycle", "install_environment"]
+    },
+    "R1_in_warranty_defect_match": {
+      "description": "In warranty + manufacturing-defect keyword → eligible",
+      "verdict": "eligible",
+      "reason": "In warranty + failure mode matches known manufacturing-defect category."
+    },
+    "R_install_environment": {
+      "description": "In warranty + EMI/installation keyword → unclear (engineer review)",
+      "verdict": "unclear",
+      "reason": "In warranty but description suggests installation environment (EMI / VFD / grounding) — could be defect or installation issue. Need engineer review.",
+      "evidenceGaps": ["installation_photos", "wiring_diagram", "neighbouring_equipment_list"]
+    },
+    "R_in_warranty_default_unclear": {
+      "description": "In warranty but failure mode unclear → request more info",
+      "verdict": "unclear",
+      "reason": "In warranty but failure mode unclear — could be defect or expected wear. Need additional evidence.",
+      "evidenceGaps": ["photos_of_failure", "duty_cycle_history", "operating_environment"]
+    }
+  }
+}

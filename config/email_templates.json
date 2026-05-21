@@ -1,0 +1,37 @@
+{
+  "_description": "Customer-facing email templates per disposition. Used in step 9 of the agent's instructions block.",
+  "_lastUpdated": "2026-05-05",
+  "_calibrationStatus": "STARTER — confirm brand voice + signature with HKP customer",
+
+  "_signature": "AMETEK Haydon Kerk Pittman — Warranty & RMA Team\\nhkp-warranty@ametek.com",
+
+  "approve_replace": {
+    "subject": "RMA {{claimNumber}} — Approved for Replacement",
+    "bodyHtml": "<p>Hello {{firstName}},</p><p>Good news — your RMA for serial <strong>{{serialNumber}}</strong> has been approved for replacement under warranty.</p><p>What happens next:</p><ol><li>A return shipping label is attached to this email — please use it to send the failed unit to our service center.</li><li>Once we receive the unit, a replacement will ship within 5 business days.</li><li>You'll get a tracking number when the replacement ships.</li></ol><p>Reference: <strong>{{claimNumber}}</strong> — please keep this for your records.</p><p>Thanks,<br/>AMETEK HKP — Warranty & RMA Team</p>"
+  },
+
+  "approve_repair": {
+    "subject": "RMA {{claimNumber}} — Approved for Repair",
+    "bodyHtml": "<p>Hello {{firstName}},</p><p>Your RMA for serial <strong>{{serialNumber}}</strong> has been approved for repair under warranty.</p><p>Please use the attached return shipping label to send the unit to our service center. Repair turnaround is typically 7-10 business days.</p><p>Reference: <strong>{{claimNumber}}</strong></p><p>Thanks,<br/>AMETEK HKP — Warranty & RMA Team</p>"
+  },
+
+  "approve_refund": {
+    "subject": "RMA {{claimNumber}} — Refund Approved (Pending Manager Review)",
+    "bodyHtml": "<p>Hello {{firstName}},</p><p>Your RMA for serial <strong>{{serialNumber}}</strong> has been approved for a refund. Manager final approval is required and typically takes 2 business days.</p><p>You'll receive a follow-up email once the credit memo is issued.</p><p>Reference: <strong>{{claimNumber}}</strong></p><p>Thanks,<br/>AMETEK HKP — Warranty & RMA Team</p>"
+  },
+
+  "reject": {
+    "subject": "RMA {{claimNumber}} — Update on Your Warranty Claim",
+    "bodyHtml": "<p>Hello {{firstName}},</p><p>We've reviewed your RMA for serial <strong>{{serialNumber}}</strong>. Unfortunately we're unable to accept this claim under warranty.</p><p><strong>Reason:</strong> {{rejectionReason}}</p><p>We'd be happy to provide a paid-repair quote if you're interested — please reply <strong>YES</strong> to this email and we'll send you the quote within 1 business day.</p><p>Reference: <strong>{{claimNumber}}</strong></p><p>Thanks for your understanding,<br/>AMETEK HKP — Warranty & RMA Team</p>"
+  },
+
+  "request_more_info": {
+    "subject": "RMA {{claimNumber}} — Additional Information Needed",
+    "bodyHtml": "<p>Hello {{firstName}},</p><p>Thanks for your warranty request on serial <strong>{{serialNumber}}</strong>. To complete our review, we need a few more details:</p><ul>{{#evidenceGaps}}<li>{{this}}</li>{{/evidenceGaps}}</ul><p>Please reply with this information and we'll continue the evaluation. If you have photos or error codes, please attach them.</p><p>Reference: <strong>{{claimNumber}}</strong></p><p>Thanks,<br/>AMETEK HKP — Warranty & RMA Team</p>"
+  },
+
+  "escalate_to_engineer": {
+    "subject": "RMA {{claimNumber}} — Under Engineering Review",
+    "bodyHtml": "<p>Hello {{firstName}},</p><p>Your RMA for serial <strong>{{serialNumber}}</strong> has been routed to our quality engineering team for review. This typically happens when the failure mode requires deeper analysis.</p><p>One of our engineers will respond within <strong>3 business days</strong> with a disposition or a request for additional information.</p><p>Reference: <strong>{{claimNumber}}</strong></p><p>Thanks for your patience,<br/>AMETEK HKP — Warranty & RMA Team</p>"
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "_description": "AMETEK HKP RMA Agent Set — environment binding for Mfg Gold Template + reuse of existing WarrantyandClaimOperations solution.",
+  "customer": {
+    "slug": "ametek",
+    "useCase": "hkp_rma",
+    "fullName": "AMETEK Haydon Kerk Pittman",
+    "division": "HKP",
+    "productLine": "iDEA motor / linear actuator",
+    "referenceUrl": "https://www.ametek.com/newsroom/news/business/2022/april/ametek-haydon-kerk-pittman-introduces-new-57mm-size-in-idea-motor-series"
+  },
+  "targetEnvironment": {
+    "name": "Mfg Gold Template",
+    "envId": "2404ccaf-d7e5-e1ff-863a-3ecbe2f0f013",
+    "orgUrl": "https://org6feab6b5.crm.dynamics.com/",
+    "rationale": "v1.0.0.14 of WarrantyandClaimOperations is canonical here (Master CE Mfg has older v1.0.0.10 — leave alone until promotion)."
+  },
+  "reusedSolution": {
+    "uniqueName": "WarrantyandClaimOperations",
+    "version": "1.0.0.14",
+    "solutionId": "0900a765-5169-f011-b4cb-6045bd029188",
+    "publisherPrefix": "cr74e",
+    "modifiedOn": "2025-09-22T17:45:26Z"
+  },
+  "entityMap": {
+    "warrantyClaim":        { "logical": "cr74e_warrantyclaim",      "purpose": "Core RMA record" },
+    "claimStatus":          { "logical": "cr74e_claimstatus",        "purpose": "Reference table for claim states" },
+    "customerInteraction":  { "logical": "cr74e_customerinteraction","purpose": "Touch log per claim (calls, emails, agent actions)" },
+    "parts":                { "logical": "cr74e_parts",              "purpose": "HKP iDEA motor part master" },
+    "productSerial":        { "logical": "cr74e_productserial",      "purpose": "Serial-number tracking + warranty linkage" },
+    "rootCause":            { "logical": "cr74e_rootcause",          "purpose": "Root-cause classification on closure" },
+    "department":           { "logical": "cr74e_department",         "purpose": "Routing target" },
+    "warranty":             { "logical": "msdyn_warranty",           "purpose": "OOTB Field Service warranty entity" },
+    "customerAsset":        { "logical": "msdyn_customerasset",      "purpose": "OOTB asset record (per-serial install / owner)" }
+  },
+  "powerAutomateFlows": [
+    { "name": "CreateWarrantyClaim",                          "reuseFor": "intake-write",        "currentState": "Activated" },
+    { "name": "When a new email arrives for a warranty claim","reuseFor": "intake-trigger",      "currentState": "Activated" },
+    { "name": "Capture each incoming and outgoing email",     "reuseFor": "interaction-log",     "currentState": "Draft - needs activation" },
+    { "name": "Claim Routing Automation",                     "reuseFor": "post-disposition",    "currentState": "Draft - needs activation" },
+    { "name": "Request Manager Approval for Claim",           "reuseFor": "human-review-gate",   "currentState": "Activated" },
+    { "name": "Send Shipping Label",                          "reuseFor": "approve-replace",     "currentState": "Activated" },
+    { "name": "When a Claim is added or modified",            "reuseFor": "customer-status-notify","currentState": "Activated" },
+    { "name": "New Claims Notifications",                     "reuseFor": "ops-notify-on-intake","currentState": "Activated" },
+    { "name": "Customer Interaction Agent Flow",              "reuseFor": "interaction-agent",   "currentState": "Activated" }
+  ],
+  "claimStatusValues": [
+    "Submitted",
+    "Triaged",
+    "Pending Eligibility Review",
+    "Pending Engineer Review",
+    "Approved - Repair",
+    "Approved - Replace",
+    "Approved - Refund",
+    "Rejected - Out of Warranty",
+    "Rejected - Misuse",
+    "Rejected - Insufficient Evidence",
+    "Closed - Resolved",
+    "Closed - Customer Withdrew"
+  ],
+  "dispositionVerdicts": [
+    "approve_repair",
+    "approve_replace",
+    "approve_refund",
+    "reject",
+    "request_more_info",
+    "escalate_to_engineer"
+  ],
+  "rootCauseCategories": [
+    "manufacturing_defect",
+    "material_failure",
+    "shipping_damage",
+    "installation_error",
+    "customer_misuse",
+    "wear_and_tear",
+    "environmental",
+    "unknown"
+  ]
+}

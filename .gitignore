@@ -1,0 +1,8 @@
+# Build artifacts and temp files
+*.bak
+*.tmp
+__*.xml
+.tmp_*
+backup/
+backups/
+

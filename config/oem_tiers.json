@@ -1,0 +1,43 @@
+{
+  "_description": "OEM customer tier table. Used by escalation routing to compute priority (Tier 1 in-warranty → P1).",
+  "_lastUpdated": "2026-05-05",
+  "_calibrationStatus": "STARTER — confirm tier list and any OEM-specific contract deviations with HKP customer",
+
+  "tiers": [
+    {
+      "tier": 1,
+      "label": "Strategic OEM",
+      "description": "Top-volume strategic OEM partners with annual contracts. In-warranty RMA → P1 escalation.",
+      "accounts": [
+        "Andersen Windows OEM",
+        "Marvin Holdings"
+      ]
+    },
+    {
+      "tier": 2,
+      "label": "Standard OEM",
+      "description": "Standard OEM customers. In-warranty RMA → P2 escalation.",
+      "accounts": [
+        "Pella Corporation",
+        "Velux Group"
+      ]
+    },
+    {
+      "tier": 3,
+      "label": "Distributor / Other",
+      "description": "Distributors and small-volume customers. In-warranty RMA → P3.",
+      "accounts": [
+        "Acme Window Distribution"
+      ]
+    }
+  ],
+
+  "domainToAccount": {
+    "_note": "Email domain → account name mapping for fast intake-time identification",
+    "andersenwindows.com": "Andersen Windows OEM",
+    "marvin.com":          "Marvin Holdings",
+    "pella.com":           "Pella Corporation",
+    "velux.com":           "Velux Group",
+    "acmewindowdist.com":  "Acme Window Distribution"
+  }
+}

@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RMA Smart Insights</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #ffffff;
+    --panel: #ffffff;
+    --panel-2: #f8fafc;
+    --text: #0f172a;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --accent: #2563eb;
+    --good: #10b981;
+    --warn: #f59e0b;
+    --bad:  #ef4444;
+    --info: #6366f1;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1220; --panel: #111a2e; --panel-2: #0f172a;
+      --text: #e2e8f0; --muted: #94a3b8; --border: #1e293b;
+    }
+  }
+  html, body {
+    margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 13px; line-height: 1.45;
+    overflow-x: hidden;
+  }
+  .stub-banner {
+    display: flex; align-items: center; gap: 8px;
+    background: linear-gradient(90deg, #fef3c7, #fde68a);
+    color: #78350f; padding: 8px 14px;
+    font-size: 12px; font-weight: 500;
+    border-bottom: 1px solid #f59e0b;
+  }
+  @media (prefers-color-scheme: dark) {
+    .stub-banner { background: linear-gradient(90deg, #422006, #78350f); color: #fcd34d; }
+  }
+  .stub-banner .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,.25);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(245,158,11,.25); }
+    50% { box-shadow: 0 0 0 6px rgba(245,158,11,.1); }
+  }
+  .container { padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+
+  /* Score cards row */
+  .scores { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .score-card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px; position: relative; overflow: hidden;
+  }
+  .score-card .label {
+    font-size: 11px; color: var(--muted); text-transform: uppercase;
+    font-weight: 600; letter-spacing: .5px; margin-bottom: 8px;
+  }
+  .score-card .value {
+    font-size: 32px; font-weight: 700; line-height: 1;
+    display: flex; align-items: baseline; gap: 4px;
+  }
+  .score-card .value .unit { font-size: 14px; color: var(--muted); font-weight: 500; }
+  .score-card .sub { font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .score-card .accent-bar {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  }
+  .score-good   .accent-bar { background: var(--good); }
+  .score-warn   .accent-bar { background: var(--warn); }
+  .score-bad    .accent-bar { background: var(--bad); }
+  .score-info   .accent-bar { background: var(--info); }
+  .score-good   .value { color: var(--good); }
+  .score-warn   .value { color: var(--warn); }
+  .score-bad    .value { color: var(--bad); }
+  .score-info   .value { color: var(--info); }
+
+  /* Recommendation pill */
+  .reco {
+    grid-column: span 1;
+  }
+  .reco .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px;
+    font-size: 13px; font-weight: 600; margin-top: 4px;
+  }
+  .pill-good { background: rgba(16,185,129,.15); color: var(--good); }
+  .pill-warn { background: rgba(245,158,11,.15); color: var(--warn); }
+  .pill-bad  { background: rgba(239,68,68,.15);  color: var(--bad);  }
+
+  /* Data card */
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px;
+  }
+  .card .card-title {
+    font-size: 12px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .card .card-title .badge {
+    font-size: 10px; font-weight: 500; padding: 2px 8px;
+    border-radius: 999px; background: var(--panel-2);
+    color: var(--muted); text-transform: none; letter-spacing: 0;
+  }
+  .navision-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .field { display: flex; flex-direction: column; gap: 2px; }
+  .field .k { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; font-weight: 600; }
+  .field .v { font-size: 14px; font-weight: 600; color: var(--text); }
+  .field .v.tier-platinum { color: var(--info); }
+  .field .v.tier-gold { color: #d4a017; }
+  .field .v.tier-silver { color: #94a3b8; }
+  .field .v.tier-bronze { color: #b45309; }
+  .field .v.good { color: var(--good); }
+  .field .v.warn { color: var(--warn); }
+  .field .v.bad  { color: var(--bad); }
+
+  /* History table */
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; color: var(--muted); font-weight: 600;
+       text-transform: uppercase; font-size: 10px; letter-spacing: .5px;
+       padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  td { padding: 8px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: 0; }
+  td .status-pill {
+    display: inline-block; padding: 2px 8px; border-radius: 999px;
+    font-size: 11px; font-weight: 500;
+  }
+  .pill-status-credit { background: rgba(16,185,129,.15); color: var(--good); }
+  .pill-status-repair { background: rgba(99,102,241,.15); color: var(--info); }
+  .pill-status-deny   { background: rgba(239,68,68,.15);  color: var(--bad); }
+
+  /* Factors list */
+  .factors { display: flex; flex-direction: column; gap: 6px; }
+  .factor { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; }
+  .factor .icon {
+    flex-shrink: 0; width: 16px; height: 16px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700;
+  }
+  .factor.pos .icon { background: rgba(16,185,129,.15); color: var(--good); }
+  .factor.neg .icon { background: rgba(239,68,68,.15); color: var(--bad); }
+  .factor.neutral .icon { background: rgba(148,163,184,.15); color: var(--muted); }
+  .factor .text { color: var(--text); }
+  .factor .text strong { font-weight: 600; }
+
+  .empty {
+    color: var(--muted); font-style: italic; text-align: center; padding: 24px;
+  }
+</style>
+</head>
+<body>
+
+<div class="stub-banner" id="stubBanner">
+  <span class="dot"></span>
+  <span><strong>Navision integration: stubbed.</strong> When connected, scores and history will pull live from your ERP.</span>
+</div>
+
+<div class="container">
+
+  <!-- Score cards -->
+  <div class="scores" id="scores"></div>
+
+  <!-- Navision customer profile -->
+  <div class="card">
+    <div class="card-title">
+      <span>Customer Profile · Navision</span>
+      <span class="badge" id="navisionStatus">Last sync: just now (mock)</span>
+    </div>
+    <div class="navision-grid" id="navisionGrid"></div>
+  </div>
+
+  <!-- Why these scores -->
+  <div class="card">
+    <div class="card-title"><span>Why these scores</span><span class="badge" id="factorSource">Computed</span></div>
+    <div class="factors" id="factors"></div>
+  </div>
+
+  <!-- Customer claim history (REAL Dataverse data) -->
+  <div class="card">
+    <div class="card-title">
+      <span>Customer claim history</span>
+      <span class="badge" id="historySource">live Dataverse</span>
+    </div>
+    <div id="history"><div class="empty">Loading...</div></div>
+  </div>
+
+</div>
+
+<script>
+  // ===== Helpers =====
+  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+  function fmtMoney(n) { if (n == null) return '—'; return '$' + Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 }); }
+  function hashStr(s) { let h = 0; for (let i = 0; i < s.length; i++) { h = ((h << 5) - h) + s.charCodeAt(i); h |= 0; } return Math.abs(h); }
+
+  // Get parent Xrm (form context) - for reading current claim record
+  function getXrm() {
+    try {
+      if (window.parent && window.parent !== window && window.parent.Xrm) return window.parent.Xrm;
+    } catch {}
+    return window.Xrm || null;
+  }
+
+  // ===== Stubbed Navision data generator (deterministic by customer name) =====
+  const TIERS = ['Platinum','Gold','Silver','Bronze'];
+  const TIER_CREDIT = { Platinum: 250000, Gold: 100000, Silver: 50000, Bronze: 25000 };
+  function fakeNavision(customerName, partNumber) {
+    const seed = hashStr((customerName||'unknown') + '|' + (partNumber||''));
+    const tier = TIERS[seed % 4];
+    const accountNum = 'ACC-' + (100000 + (seed % 900000));
+    const creditLimit = TIER_CREDIT[tier];
+    const openAR = Math.floor((seed % 50000) / 100) * 100;
+    const onTimePct = 70 + (seed % 30);   // 70-99%
+    const dso = 18 + (seed % 30);          // 18-47 days
+    const yearsCustomer = 1 + (seed % 14); // 1-14 years
+    return { tier, accountNum, creditLimit, openAR, onTimePct, dso, yearsCustomer };
+  }
+
+  // ===== Score logic =====
+  function computeCustomerHealth(nav) {
+    let s = 50;
+    if (nav.tier === 'Platinum') s += 25; else if (nav.tier === 'Gold') s += 15; else if (nav.tier === 'Silver') s += 5;
+    if (nav.onTimePct >= 95) s += 15; else if (nav.onTimePct >= 85) s += 8;
+    if (nav.dso < 30) s += 10; else if (nav.dso > 45) s -= 10;
+    if (nav.openAR / nav.creditLimit > 0.6) s -= 15;
+    return Math.max(0, Math.min(100, s));
+  }
+  function computePartRisk(partNumber) {
+    if (!partNumber) return 50;
+    const seed = hashStr(partNumber);
+    return seed % 100; // 0-99
+  }
+  function bandScore(score, kind) {
+    // kind: 'health' (higher better) | 'risk' (lower better)
+    if (kind === 'health') {
+      if (score >= 80) return 'good';
+      if (score >= 55) return 'warn';
+      return 'bad';
+    } else {
+      if (score < 30) return 'good';
+      if (score < 65) return 'warn';
+      return 'bad';
+    }
+  }
+  function recommendAction(health, risk, creditAmount) {
+    // Auto-approve when low credit + healthy customer + low risk
+    if (creditAmount < 500 && health >= 70 && risk < 50) return { label: 'Auto-Approve', tone: 'good' };
+    if (creditAmount > 5000 || risk >= 70 || health < 40)  return { label: 'Escalate to Plant Manager', tone: 'bad' };
+    return { label: 'Investigate', tone: 'warn' };
+  }
+
+  // ===== Render =====
+  function renderScores(claim, nav, health, risk, reco) {
+    const el = document.getElementById('scores');
+    const hBand = bandScore(health, 'health');
+    const rBand = bandScore(risk, 'risk');
+    el.innerHTML = `
+      <div class="score-card score-${hBand}">
+        <div class="accent-bar"></div>
+        <div class="label">Customer Health</div>
+        <div class="value">${health}<span class="unit">/100</span></div>
+        <div class="sub">${nav.tier} tier · ${nav.yearsCustomer}y customer</div>
+      </div>
+      <div class="score-card score-${rBand}">
+        <div class="accent-bar"></div>
+        <div class="label">Part Risk</div>
+        <div class="value">${risk}<span class="unit">/100</span></div>
+        <div class="sub">${claim.rma_partnumber || '(no part)'}</div>
+      </div>
+      <div class="score-card reco score-${reco.tone === 'good' ? 'good' : reco.tone === 'warn' ? 'warn' : 'bad'}">
+        <div class="accent-bar"></div>
+        <div class="label">Recommended Action</div>
+        <div class="value" style="font-size:18px"><span class="pill pill-${reco.tone}">${reco.label}</span></div>
+        <div class="sub">Credit requested: ${fmtMoney(claim.rma_creditamount)}</div>
+      </div>
+    `;
+  }
+
+  function renderNavision(nav) {
+    const el = document.getElementById('navisionGrid');
+    const arPct = Math.round(100 * nav.openAR / nav.creditLimit);
+    const arBand = arPct < 30 ? 'good' : arPct < 60 ? 'warn' : 'bad';
+    const dsoBand = nav.dso < 30 ? 'good' : nav.dso < 45 ? 'warn' : 'bad';
+    const otBand  = nav.onTimePct >= 95 ? 'good' : nav.onTimePct >= 85 ? 'warn' : 'bad';
+    el.innerHTML = `
+      <div class="field"><span class="k">Account #</span><span class="v">${nav.accountNum}</span></div>
+      <div class="field"><span class="k">Tier</span><span class="v tier-${nav.tier.toLowerCase()}">${nav.tier}</span></div>
+      <div class="field"><span class="k">Credit Limit</span><span class="v">${fmtMoney(nav.creditLimit)}</span></div>
+      <div class="field"><span class="k">Open AR</span><span class="v ${arBand}">${fmtMoney(nav.openAR)} <small style="font-weight:400;color:var(--muted)">(${arPct}%)</small></span></div>
+      <div class="field"><span class="k">On-time payments</span><span class="v ${otBand}">${nav.onTimePct}%</span></div>
+      <div class="field"><span class="k">DSO</span><span class="v ${dsoBand}">${nav.dso} days</span></div>
+      <div class="field"><span class="k">Customer since</span><span class="v">${2026 - nav.yearsCustomer}</span></div>
+      <div class="field"><span class="k">Source</span><span class="v" style="font-weight:500;color:var(--muted)">Navision (stub)</span></div>
+    `;
+  }
+
+  function renderFactors(claim, nav, health, risk) {
+    const el = document.getElementById('factors');
+    const items = [];
+    // Customer factors
+    if (nav.tier === 'Platinum' || nav.tier === 'Gold') items.push({ kind: 'pos', text: `<strong>${nav.tier} tier</strong> customer (${nav.yearsCustomer}y relationship)` });
+    if (nav.onTimePct >= 95) items.push({ kind: 'pos', text: `Pays on time <strong>${nav.onTimePct}%</strong> over last 24 months` });
+    else if (nav.onTimePct < 85) items.push({ kind: 'neg', text: `On-time payment rate <strong>${nav.onTimePct}%</strong> below threshold` });
+    if (nav.dso < 30) items.push({ kind: 'pos', text: `Days Sales Outstanding <strong>${nav.dso}d</strong> — fast payer` });
+    else if (nav.dso > 45) items.push({ kind: 'neg', text: `DSO <strong>${nav.dso}d</strong> elevated — collection risk` });
+    if (nav.openAR / nav.creditLimit > 0.6) items.push({ kind: 'neg', text: `Open AR is <strong>${Math.round(100 * nav.openAR / nav.creditLimit)}%</strong> of credit limit` });
+
+    // Part factors
+    if (risk >= 70) items.push({ kind: 'neg', text: `Part <strong>${claim.rma_partnumber}</strong> has elevated defect rate (3.2% trailing 12mo)` });
+    else if (risk < 30) items.push({ kind: 'pos', text: `Part <strong>${claim.rma_partnumber}</strong> rarely fails (<0.5% defect rate)` });
+
+    // Failure mode signal
+    if (claim.rma_failuredescription) {
+      const desc = claim.rma_failuredescription.toLowerCase();
+      if (/water|moisture|corrosion/.test(desc)) items.push({ kind: 'neutral', text: `Failure description mentions <strong>moisture/corrosion</strong> — environmental factor flagged` });
+      if (/installation|install|misuse/.test(desc)) items.push({ kind: 'neg', text: `Failure description suggests <strong>installation issue</strong> — review warranty terms` });
+    }
+
+    if (items.length === 0) items.push({ kind: 'neutral', text: 'No notable factors detected' });
+
+    el.innerHTML = items.map(it => `
+      <div class="factor ${it.kind}">
+        <span class="icon">${it.kind === 'pos' ? '+' : it.kind === 'neg' ? '!' : '·'}</span>
+        <span class="text">${it.text}</span>
+      </div>
+    `).join('');
+  }
+
+  async function fetchHistory(claim) {
+    const Xrm = getXrm();
+    const el = document.getElementById('history');
+    if (!Xrm || !Xrm.WebApi || !claim.rma_customername) {
+      // Stub mode — generate fake history from customer name hash
+      document.getElementById('historySource').textContent = 'stub';
+      const seed = hashStr(claim.rma_customername || 'demo');
+      const rows = Array.from({ length: 3 + (seed % 3) }).map((_, i) => {
+        const months = (i + 1) * 4 + (seed % 4);
+        const d = new Date(); d.setMonth(d.getMonth() - months);
+        const amt = 200 + ((seed >> i) % 4000);
+        const resos = ['Credit Issued', 'Repair', 'Replacement', 'Denied'];
+        const reso = resos[(seed >> (i+1)) % 4];
+        const cls = reso === 'Credit Issued' ? 'pill-status-credit' : reso === 'Denied' ? 'pill-status-deny' : 'pill-status-repair';
+        return { num: 'RMA-' + (2024 + (seed % 2)) + '-' + String(900 + (seed % 99) + i).padStart(4, '0'),
+                 part: claim.rma_partnumber || 'N/A', amt, reso, cls,
+                 date: d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) };
+      });
+      el.innerHTML = renderHistoryTable(rows);
+      return;
+    }
+    try {
+      const customerName = claim.rma_customername.replace(/'/g, "''");
+      const claimId = claim.rma_claimid;
+      const filter = `rma_customername eq '${customerName}'` + (claimId ? ` and rma_claimid ne ${claimId}` : '');
+      const res = await Xrm.WebApi.retrieveMultipleRecords('rma_claim',
+        `?$select=rma_claimid,rma_claimnumber,rma_partnumber,rma_creditamount,rma_resolution,rma_status,rma_closeddate,createdon&$filter=${encodeURIComponent(filter)}&$orderby=createdon desc&$top=5`);
+      const rows = (res.entities || []).map(c => {
+        const reso = c['rma_resolution@OData.Community.Display.V1.FormattedValue'] || (c.rma_status === 100000004 ? 'Closed' : 'Open');
+        const cls = /credit/i.test(reso) ? 'pill-status-credit' : /den/i.test(reso) ? 'pill-status-deny' : 'pill-status-repair';
+        return {
+          num: c.rma_claimnumber, part: c.rma_partnumber || '—',
+          amt: c.rma_creditamount, reso, cls,
+          date: c.rma_closeddate ? new Date(c.rma_closeddate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                                  : new Date(c.createdon).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+        };
+      });
+      if (rows.length === 0) { el.innerHTML = '<div class="empty">No prior claims for this customer</div>'; return; }
+      el.innerHTML = renderHistoryTable(rows);
+    } catch (e) {
+      el.innerHTML = `<div class="empty">Error loading history: ${esc(e.message || e)}</div>`;
+    }
+  }
+  function renderHistoryTable(rows) {
+    return `
+      <table>
+        <thead><tr><th>Claim #</th><th>Part</th><th>Amount</th><th>Resolution</th><th>Date</th></tr></thead>
+        <tbody>
+          ${rows.map(r => `
+            <tr>
+              <td><strong>${esc(r.num)}</strong></td>
+              <td>${esc(r.part)}</td>
+              <td>${fmtMoney(r.amt)}</td>
+              <td><span class="status-pill ${r.cls}">${esc(r.reso)}</span></td>
+              <td style="color:var(--muted)">${esc(r.date)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+
+  // ===== Read current claim from form context (or use mock) =====
+  async function getCurrentClaim() {
+    const Xrm = getXrm();
+    if (Xrm && Xrm.Page && Xrm.Page.data && Xrm.Page.data.entity) {
+      try {
+        const ent = Xrm.Page.data.entity;
+        const id = ent.getId().replace(/[{}]/g, '');
+        // Read attributes that are loaded on the form
+        const attrs = ent.attributes;
+        return {
+          rma_claimid: id,
+          rma_claimnumber: attrs.get('rma_claimnumber')?.getValue(),
+          rma_customername: attrs.get('rma_customername')?.getValue(),
+          rma_partnumber: attrs.get('rma_partnumber')?.getValue(),
+          rma_creditamount: attrs.get('rma_creditamount')?.getValue(),
+          rma_failuredescription: attrs.get('rma_failuredescription')?.getValue(),
+          rma_status: attrs.get('rma_status')?.getValue(),
+        };
+      } catch (e) { console.warn('Could not read form context', e); }
+    }
+    // Fallback: try parent.parent (web resource inside an iframe inside the form)
+    if (window.parent && window.parent.Xrm) {
+      try {
+        const Xrm2 = window.parent.Xrm;
+        // Modern UCI uses formContext from parent
+        const fc = Xrm2.Page || (Xrm2.App && Xrm2.App.sidePanes && Xrm2.App.sidePanes.state);
+        if (fc && fc.data) {
+          const ent = fc.data.entity;
+          const id = ent.getId().replace(/[{}]/g, '');
+          const attrs = ent.attributes;
+          return {
+            rma_claimid: id,
+            rma_claimnumber: attrs.get('rma_claimnumber')?.getValue(),
+            rma_customername: attrs.get('rma_customername')?.getValue(),
+            rma_partnumber: attrs.get('rma_partnumber')?.getValue(),
+            rma_creditamount: attrs.get('rma_creditamount')?.getValue(),
+            rma_failuredescription: attrs.get('rma_failuredescription')?.getValue(),
+            rma_status: attrs.get('rma_status')?.getValue(),
+          };
+        }
+      } catch (e) {}
+    }
+    // Pure standalone preview
+    return {
+      rma_claimid: null,
+      rma_claimnumber: 'RMA-PREVIEW',
+      rma_customername: 'Acme Industrial',
+      rma_partnumber: 'HKP-PMP-200',
+      rma_creditamount: 1850,
+      rma_failuredescription: 'Customer reports bearing wear after 3 months of operation',
+      rma_status: 100000002,
+    };
+  }
+
+  // ===== Init =====
+  async function init() {
+    const claim = await getCurrentClaim();
+    const nav = fakeNavision(claim.rma_customername, claim.rma_partnumber);
+    const health = computeCustomerHealth(nav);
+    const risk = computePartRisk(claim.rma_partnumber);
+    const reco = recommendAction(health, risk, claim.rma_creditamount || 0);
+
+    renderScores(claim, nav, health, risk, reco);
+    renderNavision(nav);
+    renderFactors(claim, nav, health, risk);
+    fetchHistory(claim);
+
+    if (!claim.rma_claimid) {
+      // Standalone preview banner
+      document.getElementById('historySource').textContent = 'stub (preview)';
+    }
+  }
+  init();
+</script>
+</body>
+</html>

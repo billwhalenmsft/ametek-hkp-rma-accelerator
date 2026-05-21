@@ -1,0 +1,3373 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="x-ua-compatible" content="ie=edge" />
+<title>Email Assist</title>
+<style>
+  html, body { margin:0; padding:0; height:100%; background:#f5f5f5; font-family:'Segoe UI', system-ui, sans-serif; color:#1f1f1f; font-size:13px; }
+  .pane { height:100%; overflow-y:auto; overflow-x:hidden; padding-bottom:8px; box-sizing:border-box; }
+  .hdr  { padding:14px 18px; background:#fff; border-bottom:1px solid #e1e1e1; }
+  .hdr .subj { font-weight:600; font-size:17px; line-height:1.3; margin-bottom:10px; word-wrap:break-word; color:#1f1f1f; }
+  .hdr .meta { font-size:12px; color:#666; line-height:1.5; }
+  .hdr .meta b { color:#444; font-weight:600; }
+  .hdr .meta .lbl { color:#888; margin-right:3px; }
+  .hdr .claim a { color:#0078d4; text-decoration:none; }
+  .hdr .claim a:hover { text-decoration:underline; }
+
+  /* Outlook-style sender row: avatar + name/address + received date */
+  .hdr .sender-row { display:flex; align-items:center; gap:10px; padding-top:4px; }
+  .hdr .sender-row .avatar {
+    width:36px; height:36px; border-radius:50%; flex:0 0 36px;
+    display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(135deg, #0078d4 0%, #106ebe 100%);
+    color:#fff; font-weight:600; font-size:13px; letter-spacing:.3px;
+    text-transform:uppercase;
+  }
+  .hdr .sender-row .who { flex:1; min-width:0; }
+  .hdr .sender-row .who-name { font-weight:600; color:#1f1f1f; font-size:13px; line-height:1.3; }
+  .hdr .sender-row .who-meta { font-size:11.5px; color:#666; line-height:1.4; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .hdr .sender-row .when { font-size:11.5px; color:#666; flex:0 0 auto; white-space:nowrap; align-self:flex-start; padding-top:2px; }
+
+  .pill { display:inline-block; padding:1px 7px; border-radius:999px; font-size:10px; font-weight:600; margin-left:6px; vertical-align:middle; }
+  .pill.proc { background:#e6f7ec; color:#1b6f3a; }
+  .pill.unproc { background:#fff3e0; color:#8a5a00; }
+
+  .body-wrap { padding:14px 18px 0 18px; }
+  .body-wrap .body-label { font-size:10px; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px; }
+  /* The email body styled like an Outlook reading pane: white card, proper
+     typography (sans-serif, comfortable line height), paragraph spacing.
+     Plain-text bodies are converted to paragraphs by formatPlainTextEmail()
+     so they don't look like terminal output. */
+  .body {
+    background:#fff; border:1px solid #e1e1e1; border-radius:6px;
+    padding:18px 22px;
+    max-height:380px; overflow:auto;
+    font-family:'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-size:14px; line-height:1.6; color:#1f1f1f;
+    box-shadow:0 1px 2px rgba(0,0,0,.04);
+  }
+  .body p { margin:0 0 12px 0; }
+  .body p:last-child { margin-bottom:0; }
+  .body a { color:#0078d4; }
+  .body a:hover { text-decoration:underline; }
+  .body img { max-width:100%; height:auto; }
+  .body pre { white-space:pre-wrap; word-wrap:break-word; font-family:inherit; font-size:inherit; margin:0; color:inherit; }
+  /* Key: Value lines from web-form bodies — slightly emphasize the label */
+  .body .kv-line { display:block; }
+  .body .kv-line .kv-key { font-weight:600; color:#444; }
+  /* Collapsed quoted reply ("On X, Y wrote:" / "From: ...") */
+  .body details.quoted { margin-top:14px; }
+  .body details.quoted summary {
+    cursor:pointer; color:#0078d4; font-size:12px; padding:4px 8px;
+    background:#f3f7fb; border:1px solid #d9e6f2; border-radius:4px;
+    display:inline-block; user-select:none;
+  }
+  .body details.quoted summary:hover { background:#e6f0fa; }
+  .body details.quoted[open] summary { margin-bottom:8px; }
+  .body details.quoted .quoted-body {
+    border-left:3px solid #d1d1d1; padding:4px 0 4px 12px; color:#555; font-size:13px;
+  }
+
+  .templates { padding:12px 14px 4px 14px; }
+  .templates .lbl { font-size:10px; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px; }
+  .tpl-btn { display:block; width:100%; text-align:left; padding:7px 10px; margin-bottom:5px; background:#fff; border:1px solid #d1d1d1; border-radius:4px; cursor:pointer; font-size:12px; color:#1f1f1f; transition:background .12s, border-color .12s; }
+  .tpl-btn:hover { background:#f0f6ff; border-color:#0078d4; }
+  .tpl-btn.active { background:#deecf9; border-color:#0078d4; font-weight:600; }
+  .tpl-btn .tpl-name { font-weight:600; }
+  .tpl-btn .tpl-sub { color:#666; font-size:11px; }
+  .tpl-empty { color:#888; font-style:italic; font-size:11px; padding:6px 0; }
+
+  .reply { padding:8px 14px 0 14px; }
+  .reply .lbl { font-size:10px; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
+  .reply .to-row { font-size:11.5px; color:#444; padding:5px 9px; background:#f8f8f8; border:1px solid #e6e6e6; border-radius:4px; margin-bottom:6px; display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+  .reply .to-row .to-label { font-size:10px; font-weight:700; color:#666; text-transform:uppercase; letter-spacing:.4px; }
+  .reply .to-row .to-name { font-weight:600; color:#222; }
+  .reply .to-row .to-addr { color:#666; }
+  .reply .to-row .to-warn { color:#a4262c; font-style:italic; }
+  .reply textarea { display:block; width:100%; box-sizing:border-box; height:140px; min-height:80px; max-height:340px; padding:10px 12px; border:1px solid #d1d1d1; border-radius:4px; font-family:inherit; font-size:13px; resize:vertical; outline:none; line-height:1.5; }
+  .reply textarea:focus { border-color:#0078d4; }
+  .reply .subj-in { display:block; width:100%; box-sizing:border-box; padding:7px 10px; border:1px solid #d1d1d1; border-radius:4px; font-family:inherit; font-size:12.5px; outline:none; margin-bottom:6px; }
+  .reply .subj-in:focus { border-color:#0078d4; }
+  .reply .compose-hint { font-size:10.5px; color:#888; margin-top:4px; font-style:italic; }
+
+  .actions { position:sticky; bottom:0; padding:10px 14px 12px 14px; background:#fff; border-top:1px solid #e1e1e1; box-shadow:0 -2px 6px rgba(0,0,0,.05); z-index:5; margin-top:10px; }
+  .actions .row { display:flex; gap:6px; }
+  .btn { flex:1; padding:8px 12px; border:1px solid #d1d1d1; border-radius:4px; background:#fff; cursor:pointer; font-size:12px; font-weight:600; transition:background .12s; }
+  .btn:hover { background:#f4f4f4; }
+  .btn.primary { background:#0078d4; color:#fff; border-color:#0078d4; }
+  .btn.primary:hover { background:#106ebe; }
+  .btn.primary:disabled { background:#a4c6e6; border-color:#a4c6e6; cursor:not-allowed; }
+  .btn.ghost { background:transparent; }
+  .btn:disabled, .btn.ghost:disabled { color:#a8a8a8; cursor:not-allowed; background:#fafafa; border-color:#ebebeb; }
+  .btn:disabled:hover { background:#fafafa; }
+
+  .queue { margin-top:8px; font-size:11px; color:#666; text-align:center; }
+  .queue b { color:#1f1f1f; }
+
+  .toast { position:fixed; bottom:60px; left:50%; transform:translateX(-50%); background:#1f1f1f; color:#fff; padding:8px 14px; border-radius:4px; font-size:12px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:999; }
+  .toast.show { opacity:.95; }
+  .toast.err { background:#a4262c; }
+
+  .empty-state { padding:40px 20px; text-align:center; color:#666; }
+  .empty-state .big { font-size:32px; margin-bottom:8px; }
+  .empty-state h3 { margin:0 0 6px 0; font-size:15px; color:#1f1f1f; }
+  .empty-state p { margin:0 0 16px 0; font-size:12px; }
+
+  .loading { padding:30px; text-align:center; color:#888; font-style:italic; font-size:12px; }
+  .err-box { padding:12px; background:#fff5f5; border:1px solid #fbb; color:#a4262c; border-radius:4px; font-size:12px; margin:10px 14px; }
+
+  /* Extracted Claim Data panel */
+  .extracted { padding:10px 14px 0 14px; }
+  .extracted summary { cursor:pointer; list-style:none; padding:8px 10px; background:#fff; border:1px solid #d1d1d1; border-radius:4px; font-size:11px; font-weight:600; color:#444; text-transform:uppercase; letter-spacing:.4px; display:flex; align-items:center; justify-content:space-between; }
+  .extracted summary::-webkit-details-marker { display:none; }
+  .extracted summary::after { content:"\25BC"; font-size:9px; color:#888; transition:transform .15s; }
+  .extracted[open] summary::after { transform:rotate(180deg); }
+  .extracted summary:hover { border-color:#0078d4; }
+  .extracted .ex-summary-counts { font-weight:600; font-size:10px; text-transform:none; letter-spacing:0; display:flex; align-items:center; gap:6px; }
+  .extracted .ex-ok { color:#1b6f3a; }
+  .extracted .ex-miss { color:#a4262c; margin-left:6px; }
+  .extracted .conf-pill { display:inline-block; padding:1px 8px; border-radius:999px; font-weight:700; font-size:10px; letter-spacing:.3px; }
+  .extracted .conf-high { background:#e6f7ec; color:#1b6f3a; }
+  .extracted .conf-med  { background:#fff3e0; color:#8a5a00; }
+  .extracted .conf-low  { background:#fbe9e7; color:#a4262c; }
+  .extracted .ex-body { background:#fff; border:1px solid #d1d1d1; border-top:none; border-radius:0 0 4px 4px; margin-top:-1px; padding:8px 12px; }
+  .extracted .ex-grp { font-size:10px; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:.4px; margin:10px 0 4px; padding-bottom:2px; border-bottom:1px solid #ececec; display:flex; justify-content:space-between; align-items:baseline; }
+  .extracted .ex-grp:first-of-type { margin-top:0; }
+  .extracted .ex-grp .ex-grp-counts { font-weight:500; font-size:10px; color:#888; text-transform:none; letter-spacing:0; }
+  .extracted .ex-row { display:flex; padding:4px 0; align-items:flex-start; font-size:12px; line-height:1.4; gap:6px; }
+  .extracted .ex-ic { flex:0 0 14px; font-size:11px; font-weight:700; text-align:center; padding-top:1px; }
+  .extracted .ex-ic.ok { color:#1b6f3a; }
+  .extracted .ex-ic.miss { color:#a4262c; }
+  .extracted .ex-ic.dim { color:#bbb; }
+  .extracted .ex-content { flex:1; min-width:0; }
+  .extracted .ex-lbl { color:#444; font-weight:600; font-size:12px; }
+  .extracted .ex-val { color:#1f1f1f; word-break:break-word; }
+  .extracted .ex-val.empty { color:#a4262c; font-style:italic; }
+  .extracted .ex-val.dim   { color:#888; font-style:italic; }
+  .extracted .ex-rule { color:#888; font-size:10.5px; margin-top:1px; font-family:'Cascadia Code',Consolas,monospace; }
+  .extracted .ex-noclaim { padding:10px 12px; background:#fff5f5; border:1px solid #fbb; border-top:none; border-radius:0 0 4px 4px; margin-top:-1px; color:#a4262c; font-size:12px; }
+  .extracted .ex-noclaim b { display:block; margin-bottom:4px; }
+  .extracted .ex-rerun { display:flex; align-items:center; gap:8px; padding:8px 10px; background:#f8f9fa; border:1px dashed #c8c8c8; border-radius:4px; margin-bottom:10px; }
+  .extracted .ex-rerun .ex-rerun-info { flex:1; font-size:11px; color:#666; line-height:1.3; }
+  .extracted .ex-rerun .ex-rerun-info b { color:#1f1f1f; }
+  .extracted .ex-rerun .ex-rerun-actions { display:flex; flex-direction:column; gap:4px; flex:0 0 auto; }
+  .extracted .btn-rerun { padding:6px 12px; border:1px solid #0078d4; border-radius:4px; background:#fff; color:#0078d4; cursor:pointer; font-size:11px; font-weight:600; display:flex; align-items:center; gap:4px; white-space:nowrap; justify-content:center; }
+  .extracted .btn-rerun:hover { background:#deecf9; }
+  .extracted .btn-rerun:disabled { color:#a8a8a8; border-color:#d1d1d1; background:#fafafa; cursor:not-allowed; }
+  .extracted .btn-rerun.btn-rerun-secondary { border-color:#8a8886; color:#605e5c; }
+  .extracted .btn-rerun.btn-rerun-secondary:hover { background:#f3f3f3; border-color:#605e5c; color:#1f1f1f; }
+  .extracted .rerun-result { margin:-4px 0 10px; padding:6px 10px; border-radius:4px; font-size:11px; }
+  .extracted .rerun-result.ok { background:#e6f7ec; color:#1b6f3a; border:1px solid #b8e0c8; }
+  .extracted .rerun-result.warn { background:#fff3e0; color:#8a5a00; border:1px solid #f0d4a0; }
+
+  /* Editable extracted-field inputs */
+  .extracted .ex-field-edit { display:flex; gap:4px; margin-top:3px; align-items:stretch; }
+  .extracted .ex-input { flex:1; min-width:0; padding:4px 7px; border:1px solid #c8c8c8; border-radius:3px; font-size:12px; font-family:inherit; color:#1f1f1f; background:#fff; }
+  .extracted .ex-input:focus { outline:none; border-color:#0078d4; box-shadow:0 0 0 1px #0078d4; }
+  .extracted .ex-input.empty { background:#fff8f8; border-color:#e0a8a8; }
+  .extracted .ex-input.edited { background:#fffbe6; border-color:#d4a017; }
+  .extracted .btn-capture { padding:0 7px; border:1px solid #c8c8c8; border-radius:3px; background:#f8f9fa; color:#555; cursor:pointer; font-size:11px; line-height:1; white-space:nowrap; flex:0 0 auto; }
+  .extracted .btn-capture:hover { background:#deecf9; border-color:#0078d4; color:#0078d4; }
+  .extracted .btn-capture.armed { background:#fff3e0; border-color:#d4a017; color:#8a5a00; }
+  .extracted .ex-info-pill { display:inline-block; padding:1px 6px; background:#eee; color:#777; border-radius:3px; font-size:10px; font-weight:500; margin-left:4px; }
+  .extracted .ex-edit-hint { font-size:10.5px; color:#666; padding:6px 10px; background:#f0f7ff; border:1px solid #cbe4f9; border-radius:3px; margin:0 0 8px; line-height:1.4; }
+  .extracted .ex-edit-hint b { color:#0078d4; }
+
+  /* Create Claim modal (sidebar-scoped overlay) */
+  .cc-modal-bg { position:fixed; inset:0; background:rgba(40,40,40,.45); z-index:9999; display:flex; align-items:flex-start; justify-content:center; padding:30px 12px; overflow-y:auto; }
+  .cc-modal { background:#fff; border-radius:6px; box-shadow:0 6px 24px rgba(0,0,0,.25); width:100%; max-width:340px; display:flex; flex-direction:column; }
+  .cc-modal h3 { margin:0; padding:12px 16px; border-bottom:1px solid #e0e0e0; font-size:14px; font-weight:600; color:#1f1f1f; display:flex; justify-content:space-between; align-items:center; }
+  .cc-modal h3 .cc-close { background:none; border:none; cursor:pointer; color:#888; font-size:18px; line-height:1; padding:0 4px; }
+  .cc-modal h3 .cc-close:hover { color:#a4262c; }
+  .cc-body { padding:12px 16px; }
+  .cc-section-title { font-size:10px; font-weight:700; color:#666; text-transform:uppercase; letter-spacing:.5px; margin:0 0 6px; }
+  .cc-summary { background:#f8f9fa; border:1px solid #e0e0e0; border-radius:4px; padding:8px 10px; margin-bottom:14px; font-size:11.5px; line-height:1.6; }
+  .cc-summary .cc-sum-row { display:flex; gap:6px; }
+  .cc-summary .cc-sum-lbl { flex:0 0 90px; color:#666; font-weight:600; }
+  .cc-summary .cc-sum-val { flex:1; color:#1f1f1f; word-break:break-word; }
+  .cc-summary .cc-sum-val.empty { color:#a4262c; font-style:italic; }
+  .cc-field { margin-bottom:10px; }
+  .cc-field label { display:block; font-size:11px; font-weight:600; color:#444; margin-bottom:3px; }
+  .cc-field label .req { color:#a4262c; margin-left:2px; }
+  .cc-field select { width:100%; padding:6px 8px; border:1px solid #c8c8c8; border-radius:3px; font-size:12px; font-family:inherit; background:#fff; }
+  .cc-field select:focus { outline:none; border-color:#0078d4; box-shadow:0 0 0 1px #0078d4; }
+  .cc-hint { font-size:10.5px; color:#888; margin-top:3px; font-style:italic; }
+  .cc-actions { padding:10px 16px 14px; border-top:1px solid #e0e0e0; display:flex; gap:8px; justify-content:flex-end; }
+  .cc-actions button { padding:6px 14px; border-radius:3px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid #c8c8c8; background:#fff; color:#1f1f1f; }
+  .cc-actions button.primary { background:#0078d4; color:#fff; border-color:#0078d4; }
+  .cc-actions button.primary:hover { background:#106ebe; }
+  .cc-actions button.primary:disabled { background:#a8a8a8; border-color:#a8a8a8; cursor:not-allowed; }
+  .cc-actions button.secondary:hover { background:#f3f3f3; }
+  .cc-error { background:#fbe9e7; border:1px solid #f0bcb8; color:#a4262c; padding:6px 10px; border-radius:3px; font-size:11px; margin-bottom:10px; display:none; }
+  .cc-error.show { display:block; }
+
+  /* "Also send reply" checkbox row in Create Claim modal */
+  .cc-also-send { margin:6px 0 4px; padding:8px 10px; background:#f0f7ff; border:1px solid #cbe4f9; border-radius:4px; display:flex; gap:8px; align-items:flex-start; font-size:11.5px; line-height:1.4; }
+  .cc-also-send input[type=checkbox] { margin:2px 0 0; flex:0 0 auto; cursor:pointer; }
+  .cc-also-send label { flex:1; cursor:pointer; color:#1f1f1f; }
+  .cc-also-send label b { color:#0078d4; }
+  .cc-also-send .cc-also-send-meta { font-size:10.5px; color:#666; font-weight:400; margin-top:2px; }
+  .cc-also-send.disabled { opacity:.5; }
+  .cc-also-send.disabled input, .cc-also-send.disabled label { cursor:not-allowed; }
+
+  /* Connect to Existing Claim modal */
+  .cn-modal { max-width:520px; }
+  .cn-search { padding:8px 10px; border:1px solid #c8c8c8; border-radius:3px; font-size:13px; font-family:inherit; width:100%; box-sizing:border-box; margin-bottom:10px; }
+  .cn-search:focus { outline:none; border-color:#0078d4; box-shadow:0 0 0 1px #0078d4; }
+  .cn-hint { font-size:11px; color:#666; margin-bottom:8px; line-height:1.4; }
+  .cn-results { border:1px solid #e0e0e0; border-radius:4px; max-height:280px; overflow-y:auto; background:#fff; }
+  .cn-results .cn-empty { padding:20px 12px; text-align:center; color:#888; font-size:12px; font-style:italic; }
+  .cn-results .cn-loading { padding:20px 12px; text-align:center; color:#0078d4; font-size:12px; }
+  .cn-row { display:flex; gap:10px; align-items:center; padding:8px 12px; border-bottom:1px solid #f0f0f0; cursor:pointer; font-size:12px; }
+  .cn-row:last-child { border-bottom:none; }
+  .cn-row:hover { background:#f0f7ff; }
+  .cn-row.selected { background:#deecf9; }
+  .cn-row .cn-num { font-weight:700; color:#0078d4; flex:0 0 auto; min-width:130px; }
+  .cn-row .cn-cust { flex:1; color:#1f1f1f; word-break:break-word; }
+  .cn-row .cn-meta { flex:0 0 auto; color:#666; font-size:11px; text-align:right; }
+  .cn-row .cn-pill { display:inline-block; padding:1px 6px; background:#eee; color:#555; border-radius:3px; font-size:10px; font-weight:600; margin-left:6px; }
+
+  /* Linked Claim card */
+  .linked-claim { padding:10px 14px 0 14px; }
+  .linked-claim .card { background:#fff; border:1px solid #d1d1d1; border-radius:4px; padding:9px 12px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .linked-claim .num { font-size:13px; font-weight:700; color:#0078d4; flex:0 0 auto; }
+  .linked-claim .meta { font-size:11px; color:#666; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .linked-claim .open-btn { padding:4px 9px; border:1px solid #0078d4; border-radius:4px; background:#fff; color:#0078d4; cursor:pointer; font-size:11px; font-weight:600; flex:0 0 auto; }
+  .linked-claim .open-btn:hover { background:#deecf9; }
+  .linked-claim .status-pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:10px; font-weight:700; letter-spacing:.3px; text-transform:uppercase; flex:0 0 auto; }
+  .linked-claim .status-pill.status-new           { background:#deecf9; color:#0078d4; }
+  .linked-claim .status-pill.status-triage        { background:#fff3e0; color:#8a5a00; }
+  .linked-claim .status-pill.status-investigation { background:#f3e5f5; color:#6b239a; }
+  .linked-claim .status-pill.status-decision      { background:#ffe6cc; color:#a4530c; }
+  .linked-claim .status-pill.status-closed        { background:#e6f7ec; color:#1b6f3a; }
+
+  /* Resolve / Advance section */
+  .resolve-section { padding:10px 14px 0 14px; }
+  .resolve-section summary { cursor:pointer; list-style:none; padding:8px 10px; background:#fff; border:1px solid #d1d1d1; border-radius:4px; font-size:11px; font-weight:600; color:#444; text-transform:uppercase; letter-spacing:.4px; display:flex; align-items:center; justify-content:space-between; }
+  .resolve-section summary::-webkit-details-marker { display:none; }
+  .resolve-section summary::after { content:"\25BC"; font-size:9px; color:#888; transition:transform .15s; }
+  .resolve-section[open] summary::after { transform:rotate(180deg); }
+  .resolve-section summary:hover { border-color:#0078d4; }
+  .resolve-section .rs-summary-tag { font-weight:600; font-size:10px; text-transform:none; letter-spacing:0; }
+  .resolve-section .rs-summary-tag .tag-action { display:inline-block; padding:1px 8px; border-radius:999px; font-weight:700; font-size:10px; letter-spacing:.3px; background:#fff3e0; color:#8a5a00; }
+  .resolve-section .rs-summary-tag .tag-closed { display:inline-block; padding:1px 8px; border-radius:999px; font-weight:700; font-size:10px; letter-spacing:.3px; background:#e6f7ec; color:#1b6f3a; }
+  .resolve-section .rs-body { background:#fff; border:1px solid #d1d1d1; border-top:none; border-radius:0 0 4px 4px; margin-top:-1px; padding:10px 12px; }
+  .resolve-section .rs-grp { font-size:10px; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px; }
+  .resolve-section .rs-grp:not(:first-child) { margin-top:12px; }
+  .resolve-section .rs-buttons { display:grid; grid-template-columns:1fr 1fr; gap:5px; }
+  .resolve-section .rs-buttons.single { grid-template-columns:1fr; }
+  .resolve-section .rs-btn { padding:7px 10px; border-radius:4px; cursor:pointer; font-size:11px; font-weight:600; border:1px solid #d1d1d1; background:#fff; color:#1f1f1f; text-align:center; transition:background .12s, border-color .12s, color .12s; }
+  .resolve-section .rs-btn:hover { background:#f0f6ff; border-color:#0078d4; color:#0078d4; }
+  .resolve-section .rs-btn.advance { border-color:#a06ee1; color:#6b239a; }
+  .resolve-section .rs-btn.advance:hover { background:#f3e5f5; }
+  .resolve-section .rs-btn.resolve { border-color:#107c41; color:#107c41; }
+  .resolve-section .rs-btn.resolve:hover { background:#dff6e8; }
+  .resolve-section .rs-btn.deny { border-color:#a4262c; color:#a4262c; }
+  .resolve-section .rs-btn.deny:hover { background:#fbe9e7; }
+  .resolve-section .rs-btn:disabled { color:#a8a8a8; border-color:#d1d1d1; background:#fafafa; cursor:not-allowed; }
+  .resolve-section .rs-closed { color:#1b6f3a; font-size:12px; padding:6px 0; }
+  .resolve-section .rs-decision-note { font-size:11px; color:#888; font-style:italic; padding:4px 0; }
+
+  /* Built-in quick templates */
+  .builtin-templates { display:grid; grid-template-columns:repeat(4, 1fr); gap:4px; margin-bottom:8px; }
+  .builtin-templates .bt { padding:6px 4px; background:#fff; border:1px solid #d1d1d1; border-radius:4px; cursor:pointer; font-size:11px; font-weight:600; color:#1f1f1f; text-align:center; }
+  .builtin-templates .bt:hover { background:#f0f6ff; border-color:#0078d4; color:#0078d4; }
+  .builtin-templates .bt.active { background:#deecf9; border-color:#0078d4; color:#0078d4; }
+
+  /* Open-in-composer button */
+  .reply .composer-row { margin-top:6px; }
+  .reply .btn-composer { width:100%; padding:8px 12px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:600; border:1px solid #0078d4; background:#0078d4; color:#fff; }
+  .reply .btn-composer:hover { background:#005ea2; }
+  .reply .btn-composer:disabled { background:#a8a8a8; border-color:#a8a8a8; cursor:not-allowed; }
+
+  /* ============================================================
+     FULL-PAGE MODE — Outlook.com-style 3-pane inbox
+     Activated when window contains ?mode=full or has no form context.
+     Shares all data loaders / renderers with pane mode.
+     ============================================================ */
+  body.inbox-mode { background:#faf9f8; }
+  .inbox-shell {
+    position:fixed; inset:0; display:flex; flex-direction:column;
+    background:#faf9f8; font-family:'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  .inbox-top {
+    flex:0 0 auto; display:flex; align-items:center; gap:16px;
+    padding:10px 20px; background:#fff; border-bottom:1px solid #edebe9;
+    box-shadow:0 1px 0 rgba(0,0,0,.04);
+  }
+  .inbox-top .title { font-size:18px; font-weight:600; color:#201f1e; letter-spacing:-0.01em; }
+  .inbox-top .title .icon { color:#0F6CBD; margin-right:8px; vertical-align:-2px; }
+  .inbox-top .spacer { flex:1; }
+  .inbox-top .chip {
+    display:inline-flex; align-items:center; gap:6px; height:30px; padding:0 12px;
+    border-radius:14px; border:1px solid #d1d1d1; background:#fff; color:#323130;
+    font-size:12px; font-weight:600; cursor:pointer; transition:all 0.12s;
+  }
+  .inbox-top .chip:hover { background:#f3f2f1; }
+  .inbox-top .chip.active { background:#deecf9; border-color:#0F6CBD; color:#0F6CBD; }
+  .inbox-top .chip .badge {
+    background:#0F6CBD; color:#fff; border-radius:10px; padding:1px 7px;
+    font-size:10px; font-weight:700; min-width:14px; text-align:center;
+  }
+  .inbox-top .chip.active .badge { background:#fff; color:#0F6CBD; }
+  .inbox-top .refresh-btn {
+    width:30px; height:30px; border-radius:50%; border:1px solid transparent;
+    background:transparent; cursor:pointer; color:#605e5c; font-size:14px;
+    display:inline-flex; align-items:center; justify-content:center;
+  }
+  .inbox-top .refresh-btn:hover { background:#f3f2f1; border-color:#d1d1d1; color:#0F6CBD; }
+  .inbox-top .help-btn {
+    width:30px; height:30px; border-radius:50%; border:1px solid #d1d1d1;
+    background:#fff; cursor:pointer; color:#605e5c; font-size:12px; font-weight:700;
+    display:inline-flex; align-items:center; justify-content:center;
+  }
+  .inbox-top .help-btn:hover { background:#f3f2f1; color:#0F6CBD; border-color:#0F6CBD; }
+
+  /* Search row sits between the top bar and the list/reader split */
+  .inbox-search-row {
+    flex:0 0 auto; background:#fff; border-bottom:1px solid #edebe9;
+    padding:8px 16px;
+  }
+  .inbox-search-row .inbox-search {
+    width:100%; max-width:340px; padding:7px 12px 7px 32px;
+    border:1px solid #d1d1d1; border-radius:4px;
+    font-size:13px; box-sizing:border-box; background:#faf9f8;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23605e5c' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:10px center;
+  }
+  .inbox-search-row .inbox-search:focus { outline:none; border-color:#0F6CBD; background-color:#fff; }
+  .inbox-search-row .filter-hint {
+    display:inline-block; margin-left:10px; font-size:11px; color:#888;
+  }
+  .inbox-search-row .filter-hint b { color:#0F6CBD; }
+
+  /* Preview pane for reply (Outlook-style) */
+  .reply-preview {
+    margin-top:10px; border:1px solid #e1e1e1; border-radius:6px;
+    background:#fff; padding:14px 18px; max-width:760px;
+    font-family:'Segoe UI', system-ui, sans-serif; font-size:13.5px; line-height:1.55;
+    color:#1f1f1f; white-space:pre-wrap;
+  }
+  .reply-preview-head {
+    font-size:11px; font-weight:700; color:#0F6CBD; text-transform:uppercase;
+    letter-spacing:.5px; margin-bottom:8px; display:flex; align-items:center; gap:6px;
+  }
+  .reply-preview-head .pv-tag { background:#deecf9; color:#0F6CBD; padding:1px 7px; border-radius:10px; font-size:10px; }
+  .reply-preview-meta {
+    border-bottom:1px solid #f0f0f0; padding-bottom:8px; margin-bottom:10px;
+    font-size:12px; color:#605e5c;
+  }
+  .reply-preview-meta .pv-row { margin:2px 0; }
+  .reply-preview-meta .pv-row b { color:#323130; }
+  .reply-preview-body { color:#1f1f1f; }
+  .pv-unresolved {
+    background:#fff3e0; color:#8a5a00; padding:0 4px; border-radius:3px;
+    font-family:'Cascadia Code', Consolas, monospace; font-size:12px;
+  }
+  .reply-preview-toggle {
+    margin-left:auto; background:#f3f2f1; border:1px solid #d1d1d1; border-radius:4px;
+    padding:4px 10px; font-size:11.5px; cursor:pointer; color:#323130;
+  }
+  .reply-preview-toggle:hover { background:#e1efff; border-color:#0F6CBD; color:#0F6CBD; }
+  .reply-preview-toggle.active { background:#deecf9; border-color:#0F6CBD; color:#0F6CBD; }
+
+  /* Reply label row needs to be flex so the Preview toggle sits on the right */
+  .reply .lbl-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+  .reply .lbl-row .lbl { margin-bottom:0; flex:0 0 auto; }
+  .reply .lbl-row .kbd-hint { font-size:11px; color:#888; }
+  .reply .lbl-row .kbd-hint kbd { background:#f3f2f1; border:1px solid #d1d1d1; border-bottom-width:2px;
+    border-radius:3px; padding:1px 5px; font-family:'Cascadia Code', Consolas, monospace; font-size:10.5px; color:#444; }
+
+  /* Built-in template buttons get a number badge for keyboard shortcut hint */
+  .builtin-templates .bt { position:relative; }
+  .builtin-templates .bt .kn {
+    display:inline-block; margin-right:5px; min-width:14px; padding:0 4px; height:14px; line-height:14px;
+    border-radius:3px; background:#e1efff; color:#0F6CBD; font-size:10px; font-weight:700; text-align:center;
+    vertical-align:1px;
+  }
+
+  /* Inline tip shown above the template buttons when no claim is linked yet.
+     Tells the user that {claim_number} etc. won't fill in and gives a one-click
+     shortcut to open the Create Claim modal. */
+  .templates .tpl-no-claim-tip {
+    margin:6px 0 10px 0; padding:8px 12px; border-radius:4px;
+    background:#fff8e1; border:1px solid #f0d97a; color:#5d4a00;
+    font-size:12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  }
+  .templates .tpl-no-claim-tip code {
+    background:rgba(0,0,0,.06); padding:0 4px; border-radius:3px;
+    font-family:'Cascadia Code', Consolas, monospace; font-size:11px;
+  }
+  .templates .tpl-no-claim-tip .tip-link {
+    background:#0F6CBD; color:#fff; border:none; border-radius:3px;
+    padding:4px 10px; font-size:11.5px; font-weight:600; cursor:pointer;
+    margin-left:auto;
+  }
+  .templates .tpl-no-claim-tip .tip-link:hover { background:#106ebe; }
+
+  /* Help and User Guide overlay (also bound to '?' keystroke) */
+  .kbd-help-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:9999;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .kbd-help-card {
+    background:#fff; border-radius:8px; box-shadow:0 8px 32px rgba(0,0,0,.25);
+    padding:24px 28px; max-width:760px; width:92%;
+    max-height:88vh; overflow-y:auto;
+    font-family:'Segoe UI', sans-serif; color:#323130;
+  }
+  .kbd-help-card h2 { margin:0 0 6px 0; font-size:19px; color:#201f1e; display:flex; align-items:center; gap:10px; }
+  .kbd-help-card h2 .kbd-icon { background:#deecf9; color:#0F6CBD; padding:4px 9px; border-radius:4px; font-size:12px; font-weight:700; letter-spacing:.3px; }
+  .kbd-help-card h2 .help-ver-pill { background:#dff6dd; color:#0e700e; padding:3px 8px; border-radius:999px; font-size:10.5px; font-weight:700; letter-spacing:.3px; text-transform:uppercase; }
+  .kbd-help-card .subtitle { color:#605e5c; font-size:12.5px; margin:0 0 18px 0; }
+  .kbd-help-card h3 {
+    margin:18px 0 8px 0; font-size:14px; color:#0F6CBD; font-weight:600;
+    border-bottom:1px solid #edebe9; padding-bottom:4px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .kbd-help-card h3 .step-num {
+    display:inline-block; min-width:18px; height:18px; line-height:18px;
+    text-align:center; background:#0F6CBD; color:#fff; border-radius:50%;
+    font-size:11px; font-weight:700;
+  }
+  .kbd-help-card p, .kbd-help-card li { font-size:13px; line-height:1.55; color:#323130; }
+  .kbd-help-card ol, .kbd-help-card ul { margin:6px 0 6px 22px; padding:0; }
+  .kbd-help-card li { margin-bottom:4px; }
+  .kbd-help-card code {
+    background:#f3f2f1; border:1px solid #edebe9; padding:0 5px; border-radius:3px;
+    font-family:'Cascadia Code', Consolas, monospace; font-size:11.5px; color:#0F6CBD;
+  }
+  .kbd-help-card table { width:100%; border-collapse:collapse; margin:4px 0 4px 0; }
+  .kbd-help-card td { padding:6px 4px; font-size:13px; color:#323130; border-bottom:1px solid #f3f2f1; }
+  .kbd-help-card td.key { width:140px; text-align:right; padding-right:14px; }
+  .kbd-help-card td.key kbd { background:#f3f2f1; border:1px solid #d1d1d1; border-bottom-width:2px;
+    border-radius:3px; padding:1px 8px; font-family:'Cascadia Code', Consolas, monospace; font-size:11.5px; color:#323130; }
+  .kbd-help-card .callout {
+    background:#fff8e1; border:1px solid #f0d97a; color:#5d4a00;
+    padding:8px 12px; border-radius:4px; font-size:12.5px; margin:8px 0;
+  }
+  .kbd-help-card .callout.info {
+    background:#deecf9; border-color:#a8c8ee; color:#0a3a66;
+  }
+  .kbd-help-card .footer-row { display:flex; align-items:center; gap:12px; margin-top:18px; padding-top:14px; border-top:1px solid #edebe9; }
+  .kbd-help-card .footer-row .hint { font-size:11px; color:#888; flex:1; }
+  .kbd-help-card .close-btn {
+    padding:7px 16px; background:#0F6CBD; color:#fff; border:none; border-radius:4px;
+    cursor:pointer; font-size:13px; font-weight:600;
+  }
+  .kbd-help-card .close-btn:hover { background:#106ebe; }
+
+  .inbox-body { flex:1; display:flex; min-height:0; }
+
+  /* LEFT — email list */
+  .inbox-list {
+    flex:0 0 360px; background:#fff; border-right:1px solid #edebe9;
+    overflow-y:auto; overflow-x:hidden;
+  }
+  .inbox-list .list-empty {
+    padding:60px 24px; text-align:center; color:#605e5c; font-size:13px;
+  }
+  .inbox-list .list-empty .big { font-size:36px; margin-bottom:12px; opacity:.6; }
+  .inbox-list .list-loading { padding:24px; color:#605e5c; font-size:12px; }
+  .email-row {
+    padding:10px 14px 12px 14px; border-bottom:1px solid #f3f2f1; cursor:pointer;
+    transition:background 0.08s; position:relative; min-height:64px;
+  }
+  .email-row:hover { background:#f3f9fd; }
+  .email-row.selected { background:#deecf9; }
+  .email-row.selected::before {
+    content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:#0F6CBD;
+  }
+  .email-row .row-top { display:flex; align-items:baseline; gap:8px; margin-bottom:2px; }
+  .email-row .from {
+    font-size:13px; font-weight:600; color:#201f1e; flex:1;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .email-row .time { font-size:11px; color:#605e5c; flex-shrink:0; }
+  .email-row .subj {
+    font-size:12.5px; color:#201f1e; margin-bottom:2px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .email-row .preview {
+    font-size:11.5px; color:#605e5c; line-height:1.35;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+    overflow:hidden; max-height:32px;
+  }
+  .email-row .row-meta { display:flex; gap:6px; margin-top:4px; align-items:center; }
+  .email-row .mini-pill {
+    display:inline-block; padding:1px 6px; border-radius:8px;
+    font-size:10px; font-weight:600;
+  }
+  .mini-pill.linked { background:#dff6dd; color:#107c10; }
+  .mini-pill.unproc { background:#fef0f0; color:#a4262c; }
+  .mini-pill.proc { background:#f3f2f1; color:#605e5c; }
+  .email-row .unread-dot {
+    position:absolute; left:5px; top:50%; transform:translateY(-50%);
+    width:8px; height:8px; border-radius:50%; background:#0F6CBD;
+  }
+
+  /* RIGHT — reading pane (wraps existing #pane) */
+  .inbox-reader-wrap {
+    flex:1; min-width:0; background:#fff; overflow-y:auto; overflow-x:hidden;
+    display:flex; flex-direction:column;
+  }
+  /* When in full mode, override .pane positioning so it fills the reader-wrap naturally */
+  body.inbox-mode .pane {
+    position:relative; height:auto; min-height:100%;
+    overflow:visible; max-width:920px; margin:0 auto;
+  }
+  body.inbox-mode .pane .hdr { padding:18px 28px 14px 28px; }
+  body.inbox-mode .pane .body-wrap,
+  body.inbox-mode .pane .extracted,
+  body.inbox-mode .pane .resolve-section,
+  body.inbox-mode .pane .templates,
+  body.inbox-mode .pane .reply { padding-left:28px; padding-right:28px; }
+  body.inbox-mode .pane .actions { padding-left:28px; padding-right:28px; }
+
+  /* =====================================================================
+     LAYOUT (Email | Claim Data | Response)
+     Three named columns are always emitted in the markup. CSS decides how
+     many show side-by-side based on the user's layout pick + screen width:
+        AUTO (default)    : stacks <1400, 2-col 1400-1799, 3-col \u22651800
+        layout-2col       : Email+Data left, Reply right (\u22651100, else stacks)
+        layout-3col       : 3-col \u22651500, falls back to 2-col 1100-1499, stacks <1100
+     ===================================================================== */
+  body.inbox-mode .pane .pane-cols { display:block; }
+
+  /* ---- AUTO: 2 columns at >=1400px ---- */
+  @media (min-width: 1400px) {
+    body.inbox-mode:not(.layout-2col):not(.layout-3col) .pane { max-width:1500px; }
+    body.inbox-mode:not(.layout-2col):not(.layout-3col) .pane .pane-cols {
+      display:grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(440px, 1fr);
+      gap: 0 28px;
+      align-items:start;
+    }
+    body.inbox-mode:not(.layout-2col):not(.layout-3col) .pane .pane-col { min-width:0; }
+    body.inbox-mode:not(.layout-2col):not(.layout-3col) .pane .pane-col-email,
+    body.inbox-mode:not(.layout-2col):not(.layout-3col) .pane .pane-col-data  { grid-column:1; }
+    body.inbox-mode:not(.layout-2col):not(.layout-3col) .pane .pane-col-reply { grid-column:2; }
+  }
+
+  /* ---- AUTO: upgrades to 3 columns at >=1800px ---- */
+  @media (min-width: 1800px) {
+    body.inbox-mode:not(.layout-2col):not(.layout-3col) .pane { max-width:1800px; }
+    body.inbox-mode:not(.layout-2col):not(.layout-3col) .pane .pane-cols {
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(420px, 1fr);
+      gap: 0 22px;
+    }
+    body.inbox-mode:not(.layout-2col):not(.layout-3col) .pane .pane-col-email { grid-column:1; }
+    body.inbox-mode:not(.layout-2col):not(.layout-3col) .pane .pane-col-data  { grid-column:2; }
+    body.inbox-mode:not(.layout-2col):not(.layout-3col) .pane .pane-col-reply { grid-column:3; }
+  }
+
+  /* ---- FORCED 2-COL: kicks in at >=1100px ---- */
+  @media (min-width: 1100px) {
+    body.inbox-mode.layout-2col .pane { max-width:1500px; }
+    body.inbox-mode.layout-2col .pane .pane-cols {
+      display:grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(420px, 1fr);
+      gap: 0 24px;
+      align-items:start;
+    }
+    body.inbox-mode.layout-2col .pane .pane-col { min-width:0; }
+    body.inbox-mode.layout-2col .pane .pane-col-email,
+    body.inbox-mode.layout-2col .pane .pane-col-data  { grid-column:1; }
+    body.inbox-mode.layout-2col .pane .pane-col-reply { grid-column:2; }
+  }
+
+  /* ---- FORCED 3-COL: kicks in at >=1200px (otherwise stacks) ----
+     Threshold dropped to 1200 so it works inside Power Apps' iframe which
+     is usually narrower than the actual monitor. */
+  @media (min-width: 1200px) {
+    body.inbox-mode.layout-3col .pane { max-width:1800px; }
+    body.inbox-mode.layout-3col .pane .pane-cols {
+      display:grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(380px, 1fr);
+      gap: 0 22px;
+      align-items:start;
+    }
+    body.inbox-mode.layout-3col .pane .pane-col { min-width:0; }
+    body.inbox-mode.layout-3col .pane .pane-col-email { grid-column:1; }
+    body.inbox-mode.layout-3col .pane .pane-col-data  { grid-column:2; }
+    body.inbox-mode.layout-3col .pane .pane-col-reply { grid-column:3; }
+  }
+
+  /* ---- Per-column behavior in any multi-col mode ---- */
+  @media (min-width: 1100px) {
+    /* Reply column tries to stay visible while scrolling \u2014 sticky to the top.
+       No max-height / no internal scrollbar: each section auto-sizes naturally,
+       the page itself scrolls if total content is taller than the viewport. */
+    body.inbox-mode.layout-2col .pane .pane-col-reply,
+    body.inbox-mode.layout-3col .pane .pane-col-reply,
+    body.inbox-mode:not(.layout-2col):not(.layout-3col) .pane .pane-col-reply {
+      position:sticky; top:12px; align-self:start;
+    }
+    /* Trim inside-edge padding so the inter-column gap doesn't look doubled */
+    body.inbox-mode.layout-2col .pane .pane-col-email .body-wrap,
+    body.inbox-mode.layout-3col .pane .pane-col-email .body-wrap,
+    body.inbox-mode:not(.layout-2col):not(.layout-3col) .pane .pane-col-email .body-wrap { padding-right:18px; }
+    body.inbox-mode.layout-2col .pane .pane-col-data > *,
+    body.inbox-mode.layout-3col .pane .pane-col-data > *,
+    body.inbox-mode:not(.layout-2col):not(.layout-3col) .pane .pane-col-data > * { padding-right:18px; }
+    body.inbox-mode.layout-2col .pane .pane-col-reply > *,
+    body.inbox-mode.layout-3col .pane .pane-col-reply > *,
+    body.inbox-mode:not(.layout-2col):not(.layout-3col) .pane .pane-col-reply > * { padding-left:18px; }
+  }
+
+  /* ---- Auto-size all sections in inbox mode (no internal scrollbars) ----
+     The base .body has max-height:380px + overflow:auto for the side-pane
+     embedded on the form. In the full inbox we want emails to display at
+     natural height \u2014 the page itself scrolls if needed. */
+  body.inbox-mode .pane .body { max-height:none; overflow:visible; }
+  body.inbox-mode .pane .pane-col-data { max-height:none; overflow:visible; }
+  body.inbox-mode .pane .pane-col-reply { max-height:none; overflow:visible; }
+  body.inbox-mode .pane .pane-col-email .body { max-height:none; overflow:visible; }
+
+  /* ---- Font balance: bump readable text in DATA and REPLY columns
+     so they feel as comfortable to read as the email body (14px).
+     Uppercase microcopy labels (10-11px) stay small on purpose. ---- */
+  body.inbox-mode .pane .pane-col-data .extracted .ex-row,
+  body.inbox-mode .pane .pane-col-data .extracted .ex-lbl { font-size:13.5px; line-height:1.55; }
+  body.inbox-mode .pane .pane-col-data .extracted .ex-rule { font-size:11.5px; }
+  body.inbox-mode .pane .pane-col-data .extracted .ex-input { font-size:13.5px; padding:6px 9px; }
+  body.inbox-mode .pane .pane-col-data .extracted .btn-capture { font-size:12px; padding:2px 9px; }
+  body.inbox-mode .pane .pane-col-data .extracted .ex-edit-hint { font-size:12.5px; line-height:1.5; }
+  body.inbox-mode .pane .pane-col-data .extracted .ex-info-pill { font-size:11px; }
+  body.inbox-mode .pane .pane-col-data .extracted summary { font-size:11.5px; padding:9px 12px; }
+  body.inbox-mode .pane .pane-col-data .linked-claim .num { font-size:14px; }
+  body.inbox-mode .pane .pane-col-data .linked-claim .meta { font-size:12.5px; }
+
+  body.inbox-mode .pane .pane-col-reply .tpl-btn { font-size:13.5px; padding:9px 12px; }
+  body.inbox-mode .pane .pane-col-reply .tpl-btn .tpl-sub { font-size:12.5px; }
+  body.inbox-mode .pane .pane-col-reply .reply textarea { font-size:14px; line-height:1.6; padding:12px 14px; }
+  body.inbox-mode .pane .pane-col-reply .reply .subj-in { font-size:13.5px; padding:9px 12px; }
+  body.inbox-mode .pane .pane-col-reply .reply .to-row { font-size:13px; padding:7px 11px; }
+  body.inbox-mode .pane .pane-col-reply .reply .compose-hint { font-size:11.5px; }
+  body.inbox-mode .pane .pane-col-reply .btn { font-size:13.5px; padding:10px 14px; }
+  body.inbox-mode .pane .pane-col-reply .queue { font-size:12.5px; }
+
+  /* ---- Layout toggle button group in the inbox top bar ---- */
+  .inbox-top .layout-toggle {
+    display:inline-flex; align-items:center; gap:0;
+    background:#f8f8f8; border:1px solid #e1dfdd; border-radius:4px;
+    overflow:hidden; height:30px; margin-right:6px;
+  }
+  .inbox-top .layout-toggle .lt-btn {
+    background:transparent; border:none; padding:0 10px; height:100%;
+    font-size:11.5px; color:#605e5c; cursor:pointer;
+    border-right:1px solid #e1dfdd;
+    display:inline-flex; align-items:center; gap:5px;
+    font-family:'Segoe UI', sans-serif;
+  }
+  .inbox-top .layout-toggle .lt-btn:last-child { border-right:none; }
+  .inbox-top .layout-toggle .lt-btn:hover { background:#f3f2f1; color:#0F6CBD; }
+  .inbox-top .layout-toggle .lt-btn.is-active {
+    background:#0F6CBD; color:#fff; font-weight:600;
+  }
+  .inbox-top .layout-toggle .lt-btn .lt-glyph {
+    font-family:'Cascadia Code', Consolas, monospace; font-size:13px; letter-spacing:-1px;
+    color:inherit; opacity:.85;
+  }
+  .inbox-empty-reader {
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    color:#605e5c; padding:40px; text-align:center;
+  }
+  .inbox-empty-reader .big { font-size:48px; margin-bottom:16px; opacity:.4; }
+  .inbox-empty-reader .h { font-size:16px; font-weight:600; color:#323130; margin-bottom:4px; }
+  .inbox-empty-reader .sub { font-size:13px; max-width:340px; }
+</style>
+</head>
+<body>
+<div class="pane" id="pane">
+  <div class="loading" id="root">Loading…</div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+(function(){
+  var INBOUND  = 100000000;
+  var OUTBOUND = 100000001;
+  var currentRecord = null;
+  var templates = [];
+  var selectedTemplate = null;
+  var queueState = { remaining:0, total:0 };
+  var lastRerunResult = null;  // { count, level } shown after Re-run finishes
+
+  // ---------- Claim status + resolution option values ----------
+  // Mirror of rma_claim metadata. Used by the Linked Claim card and the
+  // Resolve / Advance section in the pane.
+  var STATUS = { NEW:100000000, TRIAGE:100000001, INVESTIGATION:100000002, DECISION:100000003, CLOSED:100000004 };
+  var STATUS_LABEL = { 100000000:"New", 100000001:"Triage", 100000002:"Investigation", 100000003:"Decision", 100000004:"Closed" };
+  var STATUS_KEY   = { 100000000:"new", 100000001:"triage", 100000002:"investigation", 100000003:"decision", 100000004:"closed" };
+  var RESOLUTION = { CREDIT:100000000, REPLACEMENT:100000001, REPAIR:100000002, DENIED:100000003, PENDING:100000004 };
+  var RESOLUTION_LABEL = { 100000000:"Credit Issued", 100000001:"Replacement Sent", 100000002:"Repair Completed", 100000003:"Claim Denied" };
+
+  // ---------- Built-in quick reply templates ----------
+  // Not stored in Dataverse — fast path for the 4 common CSR replies. Use the
+  // same {token} merge syntax as Dataverse templates (see applyTokens()).
+  // {subject} (inbound subject) and {resolution_label} are extras handled in fillBuiltInTemplate.
+  var BUILTIN_TEMPLATES = [
+    { key:"acknowledge", label:"Acknowledge",
+      subject:"Re: {subject} \u2014 Claim {claim_number} received",
+      body:"Hi {first_name},\n\nThank you for contacting Ametek. We have received your request and assigned claim number {claim_number}. Our team is reviewing the details and will follow up with you shortly.\n\nBest regards,\n{agent_name}" },
+    { key:"need_info", label:"Need Info",
+      subject:"Re: {subject} \u2014 More information needed for claim {claim_number}",
+      body:"Hi {first_name},\n\nThank you for submitting claim {claim_number}. To proceed, we need additional details:\n\n  \u2022 [please list what's missing]\n\nPlease reply with the requested information and we'll continue processing your claim.\n\nBest regards,\n{agent_name}" },
+    { key:"resolved", label:"Resolved",
+      subject:"Re: {subject} \u2014 Claim {claim_number} resolved",
+      body:"Hi {first_name},\n\nGood news \u2014 claim {claim_number} has been resolved.\n\nResolution: {resolution_label}\n\n[Add next-step details: shipping tracking, credit memo number, repair ETA, etc.]\n\nIf you have any questions, please reply to this email.\n\nThank you for choosing Ametek.\n\nBest regards,\n{agent_name}" },
+    { key:"denied", label:"Denied",
+      subject:"Re: {subject} \u2014 Claim {claim_number} decision",
+      body:"Hi {first_name},\n\nWe've completed our review of claim {claim_number}. Unfortunately, we are unable to process your request at this time.\n\nReason: [please specify]\n\nIf you have additional information that may help us reconsider, please reply to this email.\n\nBest regards,\n{agent_name}" }
+  ];
+
+  // ---------- Extraction rules ----------
+  // These mirror what the production Power Automate flow does at intake.
+  // Rules with an `extract` function can be re-run client-side via the
+  // "Re-run Extraction" button. Rules without one are informational only
+  // (they require server-side data like warranty DB lookups or plant routing).
+  //
+  // weight = how much this field contributes to the confidence score.
+  //   3 = critical (claim is barely usable without it)
+  //   2 = important
+  //   1 = nice-to-have
+  //
+  // PRIORITY ORDER for each rule:
+  //   1. Structured form pair  "Label: value"   (HKP Quality Support web form)
+  //   2. Free-form patterns    (signature blocks, regexes, From: header)
+  // The web-form submissions are the dominant inbound channel, so form-pair
+  // parsing is always tried first when applicable.
+
+  // Parse "Label: value" pairs from a structured form-submission body.
+  // Tries each label variant in order; returns the first match (trimmed, single line).
+  function getFormField(body, labels) {
+    if (!body) return null;
+    var src = String(body);
+    for (var i = 0; i < labels.length; i++) {
+      var esc = labels[i].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      var re = new RegExp("^\\s*" + esc + "\\s*:\\s*([^\\r\\n]+)", "im");
+      var m = src.match(re);
+      if (m && m[1].trim()) return m[1].trim();
+    }
+    return null;
+  }
+
+  var EXTRACTION_RULES = [
+    {
+      label: "Customer Name", claimField: "rma_customername", weight: 3,
+      rule: "Form field 'Company:' \u2192 signature block \u2192 From: header",
+      extract: function(body, fromAddr){
+        // 1. Structured form: "Company: Roche Diagnostics International AG"
+        var v = getFormField(body, ["Company", "Company Name"]);
+        if (v) return v;
+        // 2. Signature: "Best regards,\nJohn Smith"
+        var m = (body||"").match(/(?:regards|thanks|sincerely|cheers|best),?\s*\n+\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})/i);
+        if (m) return m[1].trim();
+        // 3. Last resort: derive friendly name from From local-part (skip noreply forwarders)
+        if (fromAddr && !/noreply|no-reply|notification|donotreply/i.test(fromAddr)) {
+          var local = String(fromAddr).split("@")[0] || "";
+          return local.replace(/[._-]+/g, " ").replace(/\b\w/g, function(c){ return c.toUpperCase(); });
+        }
+        return null;
+      }
+    },
+    {
+      label: "Contact Name", claimField: "rma_contactname", weight: 1,
+      rule: "Form field 'Email:' local-part \u2192 signature block",
+      extract: function(body){
+        // 1. Parse First.Last from the form's Email: field (e.g. "Rath.Feil@roche.com")
+        var email = getFormField(body, ["Email"]);
+        if (email) {
+          var local = email.split("@")[0] || "";
+          if (/[._-]/.test(local)) {
+            return local.split(/[._-]+/).map(function(p){
+              return p.charAt(0).toUpperCase() + p.slice(1).toLowerCase();
+            }).join(" ");
+          }
+        }
+        // 2. Signature block
+        var m = (body||"").match(/(?:regards|thanks|sincerely|cheers|best),?\s*\n+\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})/i);
+        return m ? m[1].trim() : null;
+      }
+    },
+    {
+      label: "Customer Email", claimField: "rma_customeremail", weight: 3,
+      rule: "Form field 'Email:' \u2192 From: header (skips noreply forwarders)",
+      extract: function(body, fromAddr){
+        // 1. Form field always wins (web-form submissions come From noreply@ametek.com)
+        var v = getFormField(body, ["Email"]);
+        if (v && /@/.test(v)) return v;
+        // 2. From: header, but skip the form's notification sender
+        if (fromAddr && !/noreply|no-reply|notification|donotreply/i.test(fromAddr)) return fromAddr;
+        return null;
+      }
+    },
+    {
+      label: "Part Number", claimField: "rma_partnumber", weight: 3,
+      rule: "Form field 'AMETEK Part Number:' \u2192 prefix regex (WTB/LC/AK/G\u2026)",
+      extract: function(body){
+        // 1. Form field
+        var v = getFormField(body, ["AMETEK Part Number", "Part Number"]);
+        if (v) return v.toUpperCase();
+        // 2. Common HKP / Haydon Kerk part-number prefixes
+        var m = (body||"").match(/\b((?:WTB|LC|AK|G\d|HKP)[A-Z0-9.-]+)/i);
+        return m ? m[1].toUpperCase() : null;
+      }
+    },
+    {
+      label: "Quantity", claimField: "rma_quantity", weight: 2, isInt: true,
+      rule: "Form field 'Quantity of Suspect Parts:' \u2192 qty/quantity regex",
+      extract: function(body){
+        // 1. Form field (wins over the "Four motors" prose later in the body)
+        var v = getFormField(body, ["Quantity of Suspect Parts", "Quantity", "Qty"]);
+        if (v) {
+          var n = parseInt(v, 10);
+          if (!isNaN(n)) return n;
+        }
+        // 2. Free-form patterns
+        var m = (body||"").match(/(?:qty|quantity)[:\s]+(\d+)/i);
+        if (!m) m = (body||"").match(/\b(\d+)\s+(?:units?|pieces?|pcs|ea\b)/i);
+        return m ? parseInt(m[1], 10) : null;
+      }
+    },
+    {
+      label: "Failure Mode", claimField: "rma_failuremode", weight: 2, isFormatted: true,
+      rule: "Keyword classifier: Mechanical / Electrical / Thermal / Other"
+      // No PATCH (picklist); informational only
+    },
+    {
+      label: "Failure Description", claimField: "rma_failuredescription", weight: 3,
+      rule: "Form field 'complaint reason - Other' / 'Other Comments' \u2192 keyword line scan",
+      extract: function(body){
+        // 1. Form fields where the customer writes free-form complaint details
+        var v = getFormField(body, [
+          "What is the complaint reason - Other",
+          "Other Comments or explanation of your concern",
+          "How was the suspect part detected"
+        ]);
+        if (v) return v.slice(0, 500);
+        // 2. Free-form line scan
+        var lines = (body||"").split(/\n+/);
+        for (var i = 0; i < lines.length; i++) {
+          var ln = lines[i].trim();
+          if (ln && /(?:fail|defect|broken|not\s+working|issue|problem|symptom|malfunction)/i.test(ln)) {
+            return ln.slice(0, 500);
+          }
+        }
+        return null;
+      }
+    }
+  ];
+
+  // Customer-region picklist options (rma_customerregion on rma_claim).
+  // Selected by the user in the Create Claim modal \u2014 not extracted.
+  var REGIONS = [
+    { value: 100000000, label: "Domestic" },
+    { value: 100000001, label: "Asia Pacific" },
+    { value: 100000002, label: "Europe" },
+    { value: 100000003, label: "Latin America" }
+  ];
+
+  // Cached plant list (loaded lazily on first Create Claim click).
+  // Each plant: { id, name, region, prefixes:["WTB-","CT-"] }
+  var PLANTS_CACHE = null;
+
+  var PROCESSING_FIELDS = [
+    { label: "Status",        claimField: "rma_status",        isFormatted: true },
+    { label: "Resolution",    claimField: "rma_resolution",    isFormatted: true },
+    { label: "Credit Amount", claimField: "rma_creditamount",  isFormatted: true },
+    { label: "Closed Date",   claimField: "rma_closeddate",    isFormatted: true }
+  ];
+
+  var TRACKING_FIELDS = [
+    { label: "Claim Number",     claimField: "rma_claimnumber" },
+    { label: "Created",          claimField: "rma_createddate", isFormatted: true },
+    { label: "Source Email ID",  claimField: "rma_sourceemailid" }
+  ];
+
+  // ---------- helpers ----------
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return (s||"").replace(/[&<>"']/g, function(c){ return ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" })[c]; }); }
+  function looksLikeHtml(s){ return /<\s*(html|body|div|p|br|table|span|a|img)\b/i.test(s||""); }
+  function sanitize(html){
+    return (html||"").replace(/<\s*script\b[^>]*>[\s\S]*?<\s*\/\s*script\s*>/gi, "")
+                     .replace(/\son\w+\s*=\s*"[^"]*"/gi, "")
+                     .replace(/\son\w+\s*=\s*'[^']*'/gi, "");
+  }
+  // Build initials for the avatar circle in the email header.
+  // Prefer a real name; fall back to the email local-part.
+  function initialsFor(name, email){
+    var src = (name && String(name).trim()) || "";
+    if (!src && email) src = String(email).split("@")[0].replace(/[._-]+/g, " ");
+    if (!src) return "?";
+    var parts = src.replace(/[<>"']/g, "").trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].substring(0,2).toUpperCase();
+    return (parts[0].charAt(0) + parts[parts.length-1].charAt(0)).toUpperCase();
+  }
+  // Render plain-text email content as proper HTML paragraphs with line breaks,
+  // auto-linkified URLs/emails, "Key: Value" rows lightly styled, and quoted
+  // reply blocks collapsed into a <details> toggle. This turns the raw form
+  // dump into something that reads like an actual email instead of a code
+  // listing.
+  function formatPlainTextEmail(text){
+    if (!text) return '';
+    var raw = String(text).replace(/\r\n?/g, "\n").replace(/[ \t]+$/gm, "");
+
+    // Split off a quoted-reply tail if we recognize one
+    var quoteIdx = -1;
+    var quoteMatch = raw.match(/(^|\n)(\s*-{2,}\s*Original Message\s*-{2,}|\s*-{2,}\s*Forwarded message\s*-{2,}|\s*From:\s+[^\n]+\n\s*Sent:|\s*From:\s+[^\n]+\n\s*Date:|\s*On\s+.+\s+wrote:)/i);
+    if (quoteMatch) quoteIdx = quoteMatch.index + (quoteMatch[1] ? quoteMatch[1].length : 0);
+    var main = quoteIdx >= 0 ? raw.slice(0, quoteIdx).replace(/\s+$/,"") : raw;
+    var quoted = quoteIdx >= 0 ? raw.slice(quoteIdx) : "";
+
+    function transform(block){
+      var html = esc(block);
+      // Auto-linkify URLs first (before email regex would grab the @)
+      html = html.replace(/(https?:\/\/[^\s<>"']+[^\s<>"'.,;:)\]])/gi,
+        '<a href="$1" target="_blank" rel="noopener">$1</a>');
+      // Auto-linkify email addresses
+      html = html.replace(/([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/gi,
+        '<a href="mailto:$1">$1</a>');
+      // Split into paragraphs on blank lines
+      var paras = html.split(/\n{2,}/);
+      return paras.map(function(p){
+        var lines = p.split(/\n/);
+        // Render each line; bold the "Key:" label when this looks like a form-field line
+        var rendered = lines.map(function(ln){
+          var m = ln.match(/^([A-Z][A-Za-z0-9 _\-\/]{1,40}?):\s*(.*)$/);
+          if (m && m[1].length <= 40) {
+            return '<span class="kv-line"><span class="kv-key">' + m[1] + ':</span> ' + m[2] + '</span>';
+          }
+          return ln;
+        }).join('<br/>');
+        return '<p>' + rendered + '</p>';
+      }).join('');
+    }
+
+    var out = transform(main);
+    if (quoted) {
+      out += '<details class="quoted"><summary>Show quoted text</summary>' +
+             '<div class="quoted-body">' + transform(quoted) + '</div></details>';
+    }
+    return out;
+  }
+  function getParentXrm(){ try { return window.parent && window.parent.Xrm; } catch(e){ return null; } }
+  function getOrgUrl(){
+    var X = getParentXrm();
+    if (X && X.Utility && X.Utility.getGlobalContext) return X.Utility.getGlobalContext().getClientUrl();
+    return window.location.origin;
+  }
+  function getUserId(){
+    var X = getParentXrm();
+    if (X && X.Utility && X.Utility.getGlobalContext) {
+      var id = X.Utility.getGlobalContext().userSettings.userId;
+      return id ? id.replace(/[{}]/g, "") : null;
+    }
+    return null;
+  }
+  function getRecordId(){
+    // 1) URL data param (set via pane.navigate({...data: recordId}))
+    var qs = window.location.search;
+    var m = qs.match(/[?&]data=([^&]+)/);
+    if (m) {
+      var raw = decodeURIComponent(m[1]);
+      // Allow either raw GUID or JSON wrapping
+      if (/^[0-9a-fA-F-]{36}$/.test(raw)) return raw;
+      try { var obj = JSON.parse(raw); if (obj && obj.recordId) return obj.recordId.replace(/[{}]/g, ""); } catch(e){}
+    }
+    // 2) Parent form
+    try {
+      var X = getParentXrm();
+      if (X && X.Page && X.Page.data && X.Page.data.entity) {
+        var id2 = X.Page.data.entity.getId();
+        if (id2) return id2.replace(/[{}]/g, "");
+      }
+    } catch(e){}
+    return null;
+  }
+  function toast(msg, isErr){
+    var t = $("toast");
+    t.textContent = msg;
+    t.className = "toast show" + (isErr ? " err" : "");
+    setTimeout(function(){ t.className = "toast" + (isErr ? " err" : ""); }, 2400);
+  }
+
+  // ---------- WebApi via fetch ----------
+  function odata(method, path, body){
+    var url = getOrgUrl() + "/api/data/v9.2/" + path;
+    var headers = {
+      "Accept": "application/json",
+      "OData-MaxVersion": "4.0",
+      "OData-Version": "4.0",
+      "Prefer": "odata.include-annotations=\"OData.Community.Display.V1.FormattedValue\""
+    };
+    if (body) headers["Content-Type"] = "application/json";
+    if (method === "POST") headers["Prefer"] = "return=representation";
+    return fetch(url, { method:method, headers:headers, body: body ? JSON.stringify(body) : undefined, credentials:"include" })
+      .then(function(r){
+        if (!r.ok) return r.text().then(function(t){ throw new Error(r.status + ": " + t); });
+        if (r.status === 204) return null;
+        return r.json();
+      });
+  }
+
+  // ---------- nav history (for Back button) ----------
+  var HISTORY_KEY = "rma_email_assist_history";
+  function loadHistory(){
+    try { return JSON.parse(sessionStorage.getItem(HISTORY_KEY) || "[]"); } catch(e) { return []; }
+  }
+  function saveHistory(h){
+    try { sessionStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(-20))); } catch(e) {}
+  }
+  function pushToHistory(id){
+    if (!id) return;
+    var h = loadHistory();
+    if (h.length > 0 && h[h.length-1] === id) return; // skip consecutive duplicates
+    h.push(id);
+    saveHistory(h);
+  }
+  // Returns the id of the email to navigate back to (and removes it + current from history),
+  // or null if no previous email.
+  function popBackTarget(currentId){
+    var h = loadHistory();
+    // Strip trailing current id (if it was pushed last)
+    while (h.length > 0 && h[h.length-1] === currentId) h.pop();
+    if (h.length === 0) { saveHistory(h); return null; }
+    var prev = h.pop();
+    saveHistory(h);
+    return prev;
+  }
+  function hasBackTarget(currentId){
+    var h = loadHistory();
+    for (var i = h.length - 1; i >= 0; i--) {
+      if (h[i] !== currentId) return true;
+    }
+    return false;
+  }
+
+  // ---------- data loaders ----------
+  function loadRecord(id){
+    return odata("GET", "rma_emaillogs(" + id + ")?$select=rma_body,rma_bodypreview,rma_subject,rma_fromaddress,rma_recipient,rma_isprocessed,rma_direction,rma_receiveddate,rma_messageid,_rma_claim_value&$expand=rma_Claim($select=rma_claimnumber,rma_claimid,rma_customername,rma_customeremail,rma_contactname,rma_status,rma_warrantystatus,rma_partnumber,rma_quantity,rma_failuremode,rma_failuredescription,rma_customerregion,_rma_assignedplant_value,rma_sourceemailid,rma_createddate,rma_resolution,rma_creditamount,rma_closeddate)");
+  }
+  function loadTemplates(){
+    return odata("GET", "rma_emailtemplates?$select=rma_name,rma_subject,rma_body,rma_templatetype&$filter=rma_isactive eq true&$orderby=rma_name");
+  }
+  function loadQueue(currentId){
+    var filter = "rma_direction eq " + INBOUND + " and rma_isprocessed eq false";
+    return odata("GET", "rma_emaillogs?$select=rma_emaillogid,rma_subject,rma_receiveddate&$filter=" + encodeURIComponent(filter) + "&$orderby=rma_receiveddate asc&$count=true")
+      .then(function(r){
+        var list = (r && r.value) || [];
+        queueState.total = list.length;
+        // remove current from list
+        var remaining = list.filter(function(x){ return (x.rma_emaillogid||"").toLowerCase() !== (currentId||"").toLowerCase(); });
+        queueState.remaining = remaining.length;
+        return remaining;
+      });
+  }
+
+  // ---------- actions ----------
+  function fillTemplate(tpl){
+    selectedTemplate = tpl;
+    var subj = tpl.rma_subject ? "Re: " + tpl.rma_subject : ("Re: " + (currentRecord.rma_subject || ""));
+    var body = tpl.rma_body || "";
+    subj = applyTokens(subj);
+    body = applyTokens(body);
+    $("reply-subj").value = subj;
+    $("reply-body").value = body;
+    // Mark active
+    document.querySelectorAll(".tpl-btn").forEach(function(b){ b.classList.remove("active"); });
+    var btn = document.querySelector('.tpl-btn[data-id="'+tpl.rma_emailtemplateid+'"]');
+    if (btn) btn.classList.add("active");
+    // Refresh preview if it's showing
+    if (typeof updateReplyPreview === "function") updateReplyPreview();
+  }
+
+  // Centralized token replacement so all template inserts behave the same.
+  // Tokens are case-insensitive. Unknown tokens are left intact so the user
+  // can spot and fill them in manually (and Send & Next will warn).
+  function applyTokens(s){
+    if (!s) return s;
+    var rec = currentRecord || {};
+    var claim = rec.rma_Claim || {};
+    var hasClaim = !!(claim && claim.rma_claimid);
+    // When no claim is linked yet, fall back to the values currently in the
+    // extracted-field input boxes (the body parser populates them with the
+    // requester's actual name/email even though the inbound From is the
+    // generic noreply@ametek.com address). User edits in those fields are
+    // also picked up here. If the inputs haven't been rendered yet, the
+    // helper re-runs the extraction rules directly against the body.
+    var ext = {};
+    if (!hasClaim) {
+      try { ext = getEffectiveExtraction(rec) || {}; } catch (e) { ext = {}; }
+    }
+    // Friendly name extracted from email address (e.g. "jane.doe@x.com" -> "Jane Doe")
+    function nameFromEmail(em){
+      if (!em) return "";
+      var local = String(em).split("@")[0] || "";
+      return local.replace(/[._-]+/g, " ").replace(/\b\w/g, function(c){ return c.toUpperCase(); });
+    }
+    // Skip generic mailbox addresses when deriving a person's name from email
+    var fromAddr  = rec.rma_fromaddress || "";
+    var isNoreply = /noreply|no-reply|notification|donotreply|do-not-reply|automated/i.test(fromAddr);
+
+    // Resolution order for the person-to-greet: claim -> extracted -> from address (unless noreply)
+    var contactName  = claim.rma_contactname || ext.rma_contactname || "";
+    var customerName = claim.rma_customername || ext.rma_customername || "";
+    // Prefer the actual contact (a person) over the customer (often a company) for greetings
+    var greetingName = contactName || customerName || (isNoreply ? "" : nameFromEmail(fromAddr)) || customerName || "";
+    // First word of the greeting name (handles 'Dr. Jane Doe' -> 'Dr.' edge but mostly
+    // 'Jane Doe' -> 'Jane'). If nothing is known, fall back to 'there' so templates
+    // like "Hi {first_name}," don't render as "Hi ,".
+    var firstName    = (greetingName || "").trim().split(/\s+/)[0] || "there";
+
+    var customerEmail = claim.rma_customeremail || ext.rma_customeremail || (isNoreply ? "" : fromAddr) || "";
+    var rmaNumber     = claim.rma_claimnumber || "";
+    var statusLabel   = claim["rma_status@OData.Community.Display.V1.FormattedValue"] || "";
+    var warrantyLabel = claim["rma_warrantystatus@OData.Community.Display.V1.FormattedValue"] || "";
+    var partNumber    = claim.rma_partnumber || ext.rma_partnumber || "";
+    var quantity      = (claim.rma_quantity != null) ? String(claim.rma_quantity)
+                                                     : (ext.rma_quantity != null ? String(ext.rma_quantity) : "");
+
+    var map = {
+      // Claim-derived (with no-claim fallbacks from the extraction)
+      "customer_name": greetingName,
+      "customername":  greetingName,
+      "customer":      greetingName,
+      "contact_name":  contactName || greetingName,
+      "first_name":    firstName,
+      "firstname":     firstName,
+      "customer_email":customerEmail,
+      "rma_number":    rmaNumber,
+      "claim_number":  rmaNumber,
+      "claimname":     rmaNumber,
+      "status":        statusLabel,
+      "rma_status":    statusLabel,
+      "warranty_status": warrantyLabel,
+      "part_number":   partNumber,
+      "partnumber":    partNumber,
+      "quantity":      quantity,
+      // Sender of the inbound email
+      "from":          fromAddr,
+      "from_address":  fromAddr,
+      // Agent (logged-in user)
+      "agent_name":    getUserDisplayName(),
+      "user_name":     getUserDisplayName(),
+      // Today
+      "today":         new Date().toLocaleDateString(),
+      "date":          new Date().toLocaleDateString()
+    };
+    // Replace {token} case-insensitively. Only replace if we have a non-empty value.
+    return s.replace(/\{([a-zA-Z][a-zA-Z0-9_]*)\}/g, function(match, tok){
+      var key = tok.toLowerCase();
+      if (map.hasOwnProperty(key) && map[key] !== "" && map[key] != null) return map[key];
+      return match; // leave untouched so user notices
+    });
+  }
+
+  // Resolve who this reply is going to (single source of truth used by render + send)
+  function getReplyRecipient(){
+    var rec = currentRecord;
+    if (!rec) return { name:"", email:"" };
+    var claim = rec.rma_Claim || {};
+    var hasClaim = !!(claim && claim.rma_claimid);
+    var ext = {};
+    if (!hasClaim) {
+      try { ext = getEffectiveExtraction(rec) || {}; } catch (e) { ext = {}; }
+    }
+    var fromAddr  = rec.rma_fromaddress || "";
+    var isNoreply = /noreply|no-reply|notification|donotreply|do-not-reply|automated/i.test(fromAddr);
+    // Inline name-from-email fallback (mirrors the helper in applyTokens)
+    function nameFromEmail(em){
+      if (!em) return "";
+      var local = String(em).split("@")[0] || "";
+      return local.replace(/[._-]+/g, " ").replace(/\b\w/g, function(c){ return c.toUpperCase(); });
+    }
+    var name  = claim.rma_contactname || claim.rma_customername
+             || ext.rma_contactname  || ext.rma_customername
+             || (isNoreply ? "" : nameFromEmail(fromAddr))
+             || "";
+    var email = claim.rma_customeremail || ext.rma_customeremail
+             || (isNoreply ? "" : fromAddr)
+             || "";
+    return { name:name, email:email };
+  }
+
+  // Create a Dataverse email activity tied to the claim, then mark it Sent.
+  // This makes the reply visible in the claim's activity timeline AND keeps
+  // the existing rma_emaillog tracking row. No SMTP send is issued — perfect
+  // for demo envs where the user mailbox may not be configured.
+  function createSentEmailActivity(subj, body, recipientEmail){
+    var claim = currentRecord && currentRecord.rma_Claim;
+    if (!claim || !claim.rma_claimid) return Promise.resolve(null); // skip if no claim
+    var userId = getCurrentUserId();
+    if (!userId || !recipientEmail) return Promise.resolve(null);
+    // Plain-text -> simple HTML
+    var htmlBody = '<p>' + esc(body).replace(/\n\n+/g, '</p><p>').replace(/\n/g, '<br/>') + '</p>';
+    var payload = {
+      subject:     subj,
+      description: htmlBody,
+      "regardingobjectid_rma_claim@odata.bind": "/rma_claims(" + claim.rma_claimid + ")",
+      directioncode: true,
+      email_activity_parties: [
+        { "partyid_systemuser@odata.bind": "/systemusers(" + userId + ")", participationtypemask: 1 },
+        { addressused: recipientEmail, participationtypemask: 2 }
+      ]
+    };
+    return odata("POST", "emails", payload).then(function(newEmail){
+      var activityId = newEmail.activityid;
+      if (!activityId) return null;
+      // Try SendEmail action with IssueSend=false (marks as Sent without SMTP)
+      return odata("POST", "emails(" + activityId + ")/Microsoft.Dynamics.CRM.SendEmail", { IssueSend: false })
+        .then(function(){ return { id: activityId, sent: true }; })
+        .catch(function(sendErr){
+          // Fallback: direct state transition to Completed/Sent
+          console.warn("SendEmail action failed, falling back to PATCH:", sendErr);
+          return odata("PATCH", "emails(" + activityId + ")", { statecode: 1, statuscode: 3 })
+            .then(function(){ return { id: activityId, sent: true }; })
+            .catch(function(patchErr){
+              console.warn("State PATCH also failed (email left as Draft):", patchErr);
+              return { id: activityId, sent: false };
+            });
+        });
+    });
+  }
+
+  function sendAndNext(){
+    var subj = ($("reply-subj").value || "").trim();
+    var body = ($("reply-body").value || "").trim();
+    if (!body) { toast("Reply body is empty", true); return; }
+    if (!subj) { toast("Subject is required", true); return; }
+
+    var recipient = getReplyRecipient();
+    if (!recipient.email) {
+      toast("No recipient email \u2014 cannot send", true);
+      return;
+    }
+
+    // Warn if any {placeholder} tokens are still unfilled in subject or body.
+    // {claim_number} is the most common offender: it means no claim is linked
+    // yet, so we explicitly nudge the user to click "+ Create Claim" first
+    // instead of sending the customer a literal "{claim_number}" in their inbox.
+    var unfilled = (subj + "\n" + body).match(/\{[a-zA-Z][a-zA-Z0-9_]*\}/g);
+    if (unfilled && unfilled.length > 0) {
+      var uniq = unfilled.filter(function(v,i,a){ return a.indexOf(v) === i; });
+      var hasClaimNum = uniq.indexOf("{claim_number}") !== -1;
+      var noClaimLinked = !(currentRecord && currentRecord._rma_claim_value);
+      var msg;
+      if (hasClaimNum && noClaimLinked) {
+        msg = "This reply contains {claim_number}, but no claim is linked to this email yet.\n\n"+
+              "The customer will receive the literal text \"{claim_number}\" instead of a real claim ID.\n\n"+
+              "Recommended: cancel, click \"+ Create Claim\" first, then re-apply the template.\n\n"+
+              "Other unfilled placeholders: " + uniq.filter(function(t){return t!=="{claim_number}";}).join(", ") + "\n\n"+
+              "Send anyway?";
+      } else {
+        msg = "The reply still contains unfilled placeholders: " + uniq.join(", ") + "\n\nSend anyway?";
+      }
+      if (!confirm(msg)) return;
+    }
+
+    $("btn-send").disabled = true;
+    $("btn-send").textContent = "Sending\u2026";
+
+    // 1. Create the email activity on the claim timeline (and mark Sent)
+    createSentEmailActivity(subj, body, recipient.email)
+      .then(function(emailResult){
+        // 2. Create outbound rma_emaillog (queue tracking)
+        var newRec = {
+          rma_subject: subj,
+          rma_body: body,
+          rma_direction: OUTBOUND,
+          rma_recipient: recipient.email,
+          rma_sentby: getUserDisplayName(),
+          rma_sentdate: new Date().toISOString(),
+          rma_isprocessed: true,
+          rma_templateused: selectedTemplate ? selectedTemplate.rma_name : "Custom reply"
+        };
+        if (currentRecord._rma_claim_value) {
+          newRec["rma_Claim@odata.bind"] = "/rma_claims(" + currentRecord._rma_claim_value + ")";
+        }
+        return odata("POST", "rma_emaillogs", newRec).then(function(){ return emailResult; });
+      })
+      .then(function(emailResult){
+        // 3. Mark current inbound as processed
+        return odata("PATCH", "rma_emaillogs(" + currentRecord.rma_emaillogid + ")", { rma_isprocessed: true })
+          .then(function(){ return emailResult; });
+      })
+      .then(function(emailResult){
+        var msg = "Reply sent to " + recipient.email + " \u2713";
+        if (emailResult && emailResult.sent === false) msg = "Reply logged as Draft (mailbox not configured) \u2713";
+        toast(msg);
+        advanceToNext();
+      })
+      .catch(function(err){
+        console.error("Send failed:", err);
+        toast("Send failed: " + (err.message || err), true);
+        $("btn-send").disabled = false;
+        $("btn-send").textContent = "\u{1F4E4} Send Reply \u2192";
+      });
+  }
+
+  function markDone(){
+    if (!confirm("Mark as processed without replying?")) return;
+    $("btn-done").disabled = true;
+    odata("PATCH", "rma_emaillogs(" + currentRecord.rma_emaillogid + ")", { rma_isprocessed: true })
+      .then(function(){
+        toast("Marked processed");
+        advanceToNext();
+      })
+      .catch(function(err){
+        toast("Failed: " + err.message, true);
+        $("btn-done").disabled = false;
+      });
+  }
+
+  function skip(){
+    advanceToNext();
+  }
+
+  function goBack(){
+    var curId = currentRecord ? currentRecord.rma_emaillogid : "";
+    var prevId = popBackTarget(curId);
+    if (!prevId) { toast("No earlier email in history", true); return; }
+    if (INBOX_MODE) { selectInboxEmail(prevId); return; }
+    navigateToEmail(prevId);
+  }
+
+  function navigateToEmail(id){
+    var X = getParentXrm();
+    if (X && X.Navigation && X.Navigation.navigateTo) {
+      X.Navigation.navigateTo({
+        pageType: "entityrecord",
+        entityName: "rma_emaillog",
+        entityId: id
+      }, { target: 1 }).catch(function(e){ console.error("Nav failed:", e); toast("Navigation failed", true); });
+    } else {
+      toast("Cannot navigate — please open the record manually", true);
+    }
+  }
+
+  function advanceToNext(){
+    // In full inbox mode, refresh the inbox list and auto-select the next email.
+    if (INBOX_MODE) {
+      var curId = currentRecord ? (currentRecord.rma_emaillogid || "") : "";
+      var curLc = curId.toLowerCase();
+      // Capture the id of the email that comes RIGHT AFTER the current one in
+      // the pre-reload list. We use this after the refresh so Skip/Done land
+      // on the actual next message instead of snapping back to the top of the
+      // list (which is what happened when we naively picked "first non-current").
+      var preferredNextId = null;
+      for (var j = 0; j < inboxList.length; j++) {
+        if ((inboxList[j].rma_emaillogid || "").toLowerCase() === curLc && j + 1 < inboxList.length) {
+          preferredNextId = inboxList[j + 1].rma_emaillogid;
+          break;
+        }
+      }
+      loadAndRenderInboxList().then(function(){
+        var next = null;
+        // 1) Best case: the email that was after current is still in the list
+        if (preferredNextId) {
+          var prefLc = preferredNextId.toLowerCase();
+          for (var i = 0; i < inboxList.length; i++) {
+            if ((inboxList[i].rma_emaillogid || "").toLowerCase() === prefLc) {
+              next = inboxList[i]; break;
+            }
+          }
+        }
+        // 2) Fallback: find current's position now and take the one after it
+        //    (covers Skip when current is still in the list but ordering changed)
+        if (!next) {
+          var curIdx = -1;
+          for (var k = 0; k < inboxList.length; k++) {
+            if ((inboxList[k].rma_emaillogid || "").toLowerCase() === curLc) { curIdx = k; break; }
+          }
+          if (curIdx >= 0 && curIdx + 1 < inboxList.length) {
+            next = inboxList[curIdx + 1];
+          }
+        }
+        // 3) Current was filtered out (e.g. Done -> moved to Processed) and the
+        //    pre-reload "next" is also gone. Take the first remaining email.
+        if (!next && inboxList.length > 0) {
+          var stillThere = false;
+          for (var m = 0; m < inboxList.length; m++) {
+            if ((inboxList[m].rma_emaillogid || "").toLowerCase() === curLc) { stillThere = true; break; }
+          }
+          if (!stillThere) next = inboxList[0];
+        }
+        if (next) {
+          selectInboxEmail(next.rma_emaillogid);
+        } else {
+          inboxSelectedId = null;
+          setHashEmail(null);
+          showEmptyReader();
+        }
+      });
+      return;
+    }
+    // Pane mode: use Xrm.Navigation to open the next record's form
+    loadQueue(currentRecord.rma_emaillogid).then(function(remaining){
+      if (remaining.length === 0) {
+        renderInboxZero();
+        return;
+      }
+      var next = remaining[0];
+      navigateToEmail(next.rma_emaillogid);
+    }).catch(function(e){
+      console.error("Queue check failed:", e);
+      toast("Queue check failed", true);
+    });
+  }
+
+  function getUserDisplayName(){
+    var X = getParentXrm();
+    if (X && X.Utility && X.Utility.getGlobalContext) {
+      try { return X.Utility.getGlobalContext().userSettings.userName || ""; } catch(e){}
+    }
+    return "";
+  }
+
+  // ---------- Extracted Claim Data panel ----------
+  // ALWAYS shows extraction analysis, regardless of whether a claim was created.
+  //   - With claim:    rules check claim field state; CTA = Re-run Extraction (fill gaps)
+  //   - Without claim: rules run speculatively against email body; CTA = Create Claim
+  // Confidence is a weighted score across all extraction rules.
+  function fmtValForRule(claim, rule){
+    if (rule.isFormatted) return claim[rule.claimField + "@OData.Community.Display.V1.FormattedValue"] || null;
+    if (rule.isLookup)    return claim[rule.claimField + "@OData.Community.Display.V1.FormattedValue"] || null;
+    var v = claim[rule.claimField];
+    if (v === null || v === undefined || v === "") return null;
+    return (rule.isInt) ? String(v) : v;
+  }
+
+  function fmtVal(claim, f){
+    if (f.isFormatted) return claim[f.claimField + "@OData.Community.Display.V1.FormattedValue"] || null;
+    var v = claim[f.claimField];
+    return (v === null || v === undefined || v === "") ? null : v;
+  }
+
+  function runRulesAgainst(rec){
+    // Returns an array { rule, value, matched } for every EXTRACTION_RULE.
+    // Source depends on whether the email has a linked claim.
+    var claim = rec.rma_Claim;
+    var body  = rec.rma_body || rec.rma_bodypreview || "";
+    var fromAddr = rec.rma_fromaddress || "";
+    var hasClaim = !!claim;
+    return EXTRACTION_RULES.map(function(rule){
+      var val;
+      if (hasClaim) {
+        val = fmtValForRule(claim, rule);
+      } else {
+        val = (typeof rule.extract === "function") ? rule.extract(body, fromAddr) : null;
+      }
+      var matched = val !== null && val !== undefined && val !== "";
+      return { rule: rule, value: val, matched: matched };
+    });
+  }
+
+  function computeConfidence(ruleResults){
+    var weightedSum = 0, weightedTotal = 0, matched = 0;
+    ruleResults.forEach(function(r){
+      weightedTotal += r.rule.weight;
+      if (r.matched) { weightedSum += r.rule.weight; matched++; }
+    });
+    var score = weightedTotal > 0 ? Math.round((weightedSum / weightedTotal) * 100) : 0;
+    var level = score >= 75 ? "high" : (score >= 50 ? "med" : "low");
+    return { score:score, level:level, matched:matched, total:ruleResults.length };
+  }
+
+  function renderExtractedPanel(rec){
+    var claim    = rec.rma_Claim;
+    var hasClaim = !!claim;
+    var ruleResults = runRulesAgainst(rec);
+    var conf = computeConfidence(ruleResults);
+
+    var levelLabel = conf.level === "high" ? "HIGH" : (conf.level === "med" ? "MEDIUM" : "LOW");
+    var confPill = '<span class="conf-pill conf-'+conf.level+'">'+conf.score+'% '+levelLabel+'</span>';
+    var summaryLine = hasClaim
+      ? (conf.matched + ' of ' + conf.total + ' rules matched')
+      : (conf.matched + ' of ' + conf.total + ' rules would extract \u2014 no claim yet');
+    var summary = '<span class="ex-summary-counts">'+
+      '<span>'+esc(summaryLine)+'</span>'+
+      confPill +
+    '</span>';
+
+    // CTA banner: Save edits (has claim) or Create Claim (no claim)
+    var ctaHtml;
+    if (hasClaim) {
+      ctaHtml = '<div class="ex-rerun">'+
+        '<div class="ex-rerun-info"><b>Edit any field below</b> and click <b>Save to Claim</b> to push your corrections into the linked claim record. Overwrites existing values.</div>'+
+        '<button class="btn-rerun" id="btn-rerun">\uD83D\uDCBE Save to Claim</button>'+
+      '</div>';
+    } else {
+      ctaHtml = '<div class="ex-rerun">'+
+        '<div class="ex-rerun-info"><b>No claim created yet.</b> Review the extraction below, edit any missing or wrong values, then click <b>Create Claim</b>. The new claim will be linked back to this email and the email marked processed. If this email is a follow-up to a claim you already have, use <b>Connect to Existing Claim</b> instead.</div>'+
+        '<div class="ex-rerun-actions">'+
+          '<button class="btn-rerun" id="btn-create-claim">+ Create Claim</button>'+
+          '<button class="btn-rerun btn-rerun-secondary" id="btn-connect-claim" title="Search and link this email to a claim that already exists">\uD83D\uDD17 Connect to Existing</button>'+
+        '</div>'+
+      '</div>';
+    }
+
+    // How-to-edit hint (shown when any extractable field exists)
+    var editHintHtml = '<div class="ex-edit-hint">'+
+      '<b>Tip:</b> Type to correct any field. Or highlight text in the email body and click <b>\u21A9 Use selection</b> next to the field to capture it.'+
+    '</div>';
+
+    var rerunResultHtml = "";
+    if (lastRerunResult) {
+      var cls = lastRerunResult.updated > 0 ? "ok" : "warn";
+      rerunResultHtml = '<div class="rerun-result '+cls+'">'+esc(lastRerunResult.message)+'</div>';
+    }
+
+    // INTAKE RULES section (always shown). Extractable rules render as
+    // editable inputs prefilled with the extracted value; user can correct
+    // them or click "Use selection" to drop in highlighted text from the
+    // email body. Server-side-only rules stay read-only.
+    var intakeRowsHtml = ruleResults.map(function(rr){
+      var hasVal = rr.matched;
+      var icCls = hasVal ? "ok" : "miss";
+      var icChar = hasVal ? "\u2714" : "\u2716";
+      var isEditable = typeof rr.rule.extract === "function" && !!rr.rule.claimField;
+
+      // Read-only display path (server-side fields like Customer Region, Plant)
+      if (!isEditable) {
+        var valHtml = hasVal
+          ? '<span class="ex-val">'+esc(String(rr.value))+'</span>'
+          : '<span class="ex-val empty">(not matched)</span>';
+        var serverPill = '<span class="ex-info-pill" title="Resolved by Power Automate / server-side logic">server-side</span>';
+        return '<div class="ex-row">'+
+          '<span class="ex-ic '+icCls+'">'+icChar+'</span>'+
+          '<div class="ex-content">'+
+            '<span class="ex-lbl">'+esc(rr.rule.label)+'</span> '+valHtml+ serverPill +
+            '<div class="ex-rule">Rule: '+esc(rr.rule.rule)+'</div>'+
+          '</div>'+
+        '</div>';
+      }
+
+      // Editable path: prefill input with extracted value (or empty)
+      var initVal = hasVal ? String(rr.value) : "";
+      var inputCls = "ex-input" + (hasVal ? "" : " empty");
+      var inputType = rr.rule.isInt ? "number" : "text";
+      var placeholder = hasVal ? "" : "(not matched \u2014 type or capture from email)";
+      var inputHtml = '<input type="'+inputType+'" class="'+inputCls+'" '+
+        'data-claim-field="'+esc(rr.rule.claimField)+'" '+
+        'data-rule-label="'+esc(rr.rule.label)+'" '+
+        'data-original="'+esc(initVal)+'" '+
+        'value="'+esc(initVal)+'" '+
+        'placeholder="'+esc(placeholder)+'">';
+      var captureBtn = '<button class="btn-capture" data-capture-for="'+esc(rr.rule.claimField)+'" title="Drop the highlighted text from the email body into this field">\u21A9 Use selection</button>';
+      return '<div class="ex-row">'+
+        '<span class="ex-ic '+icCls+'">'+icChar+'</span>'+
+        '<div class="ex-content">'+
+          '<span class="ex-lbl">'+esc(rr.rule.label)+'</span>'+
+          '<div class="ex-rule">Rule: '+esc(rr.rule.rule)+'</div>'+
+          '<div class="ex-field-edit">'+inputHtml+captureBtn+'</div>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+    var intakeGroupTitle = hasClaim ? 'Extracted at Intake' : 'Would Be Extracted';
+    var intakeGroupHdr = '<div class="ex-grp">'+intakeGroupTitle+
+      '<span class="ex-grp-counts">'+conf.matched+' of '+conf.total+' matched</span></div>';
+
+    // PROCESSING + TRACKING sections only when there's a claim
+    var procSection = '';
+    var trackSection = '';
+    if (hasClaim) {
+      var procMatched = 0;
+      var procRowsHtml = PROCESSING_FIELDS.map(function(f){
+        var val = fmtVal(claim, f);
+        var hasVal = val !== null && val !== false;
+        if (hasVal) procMatched++;
+        return '<div class="ex-row">'+
+          '<span class="ex-ic '+(hasVal ? "ok" : "dim")+'">'+(hasVal ? "\u2714" : "\u2014")+'</span>'+
+          '<div class="ex-content">'+
+            '<span class="ex-lbl">'+esc(f.label)+'</span> '+
+            (hasVal ? '<span class="ex-val">'+esc(String(val))+'</span>'
+                    : '<span class="ex-val dim">(not set)</span>')+
+          '</div>'+
+        '</div>';
+      }).join('');
+      procSection = '<div class="ex-grp">Updated During Processing'+
+        '<span class="ex-grp-counts">'+procMatched+' of '+PROCESSING_FIELDS.length+' set</span></div>'+
+        procRowsHtml;
+
+      var trackRowsHtml = TRACKING_FIELDS.map(function(f){
+        var val = fmtVal(claim, f);
+        var hasVal = val !== null;
+        return '<div class="ex-row">'+
+          '<span class="ex-ic '+(hasVal ? "ok" : "dim")+'">'+(hasVal ? "\u2714" : "\u2014")+'</span>'+
+          '<div class="ex-content">'+
+            '<span class="ex-lbl">'+esc(f.label)+'</span> '+
+            (hasVal ? '<span class="ex-val">'+esc(String(val))+'</span>'
+                    : '<span class="ex-val dim">(none)</span>')+
+          '</div>'+
+        '</div>';
+      }).join('');
+      trackSection = '<div class="ex-grp">Tracking<span class="ex-grp-counts">metadata</span></div>'+
+        trackRowsHtml;
+    }
+
+    // Default open if confidence < 75% OR no claim (so user sees the rules)
+    var openAttr = (conf.score < 75 || !hasClaim) ? ' open' : '';
+    return '<div class="extracted">'+
+      '<details'+openAttr+'>'+
+        '<summary>Extracted Claim Data '+summary+'</summary>'+
+        '<div class="ex-body">'+
+          ctaHtml +
+          rerunResultHtml +
+          editHintHtml +
+          intakeGroupHdr + intakeRowsHtml +
+          procSection +
+          trackSection +
+        '</div>'+
+      '</details>'+
+    '</div>';
+  }
+
+  // ---------- Capture text selection into an input ----------
+  // Grabs the currently-highlighted text from anywhere reachable (this pane,
+  // the parent D365 page, or its iframes) and drops it into the target input.
+  // Falls back to a toast prompt if no selection is found or it's cross-origin.
+  function captureSelectionInto(inputEl){
+    var sel = "";
+    try { sel = String(window.getSelection() || "").trim(); } catch(e) {}
+    if (!sel) {
+      try { sel = String(window.parent.getSelection() || "").trim(); } catch(e) {}
+    }
+    if (!sel) {
+      try {
+        var ifs = window.parent.document.querySelectorAll("iframe");
+        for (var i = 0; i < ifs.length; i++) {
+          try {
+            var s = String(ifs[i].contentWindow.getSelection() || "").trim();
+            if (s) { sel = s; break; }
+          } catch(e) {} // cross-origin iframe \u2014 skip
+        }
+      } catch(e) {}
+    }
+    if (!sel) {
+      toast("Highlight text in the email body first, then click \u21A9 Use selection", true);
+      return;
+    }
+    // Strip control chars and collapse multi-line selections to a single line
+    sel = sel.replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim();
+    inputEl.value = sel;
+    inputEl.classList.add("edited");
+    inputEl.classList.remove("empty");
+    inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+    var preview = sel.length > 40 ? sel.slice(0, 40) + "\u2026" : sel;
+    toast("Captured: " + preview);
+  }
+
+  // Read all current values from the editable inputs, keyed by claimField.
+  // Returns object suitable for spreading into a Dataverse PATCH/POST payload
+  // (with type coercion for ints).
+  function readEditedFieldValues(){
+    var out = {};
+    var inputs = document.querySelectorAll(".extracted .ex-input[data-claim-field]");
+    inputs.forEach(function(inp){
+      var field = inp.getAttribute("data-claim-field");
+      var label = inp.getAttribute("data-rule-label");
+      var raw = (inp.value || "").trim();
+      var rule = null;
+      for (var i = 0; i < EXTRACTION_RULES.length; i++) {
+        if (EXTRACTION_RULES[i].claimField === field) { rule = EXTRACTION_RULES[i]; break; }
+      }
+      if (raw === "") return;  // skip empty fields
+      if (rule && rule.isInt) {
+        var n = parseInt(raw, 10);
+        if (!isNaN(n)) out[field] = n;
+      } else {
+        out[field] = raw;
+      }
+      out.__labels = out.__labels || {};
+      out.__labels[field] = label || field;
+    });
+    return out;
+  }
+
+  // Run the EXTRACTION_RULES directly against the email body without needing
+  // the DOM input boxes to exist yet. Used by render-time helpers (To: row,
+  // template token substitution) so the requester's actual name/email is
+  // available BEFORE renderExtractedPanel writes its inputs to the DOM.
+  function extractDefaultsFromBody(rec){
+    var out = {};
+    if (!rec) return out;
+    var body = rec.rma_body || rec.rma_bodypreview || "";
+    var fromAddr = rec.rma_fromaddress || "";
+    EXTRACTION_RULES.forEach(function(rule){
+      if (typeof rule.extract !== "function") return;
+      try {
+        var v = rule.extract(body, fromAddr);
+        if (v != null && v !== "") {
+          if (rule.isInt) {
+            var n = parseInt(v, 10);
+            if (!isNaN(n)) out[rule.claimField] = n;
+          } else {
+            out[rule.claimField] = v;
+          }
+        }
+      } catch (e) {}
+    });
+    return out;
+  }
+
+  // Best-effort extraction: prefer DOM inputs (user edits + render output)
+  // and fall back to running the rules straight against rec.rma_body. This
+  // lets render() use the same data BEFORE it has written the inputs.
+  function getEffectiveExtraction(rec){
+    var fromInputs = {};
+    try { fromInputs = readEditedFieldValues() || {}; } catch (e) {}
+    // Merge: body defaults first, DOM overrides (DOM has user edits + we trust them more)
+    var body = extractDefaultsFromBody(rec);
+    Object.keys(fromInputs).forEach(function(k){ if (k !== "__labels") body[k] = fromInputs[k]; });
+    return body;
+  }
+
+  // ---------- Create Claim from Extraction ----------
+  // Builds the claim payload from edited input values + the Region/Plant
+  // chosen in the Create Claim modal. POSTs the claim, links it to the email
+  // log, and marks the email processed. Called from the modal's Create button.
+  function createClaimFromExtraction(extras){
+    var rec = currentRecord;
+    if (!rec) return Promise.reject(new Error("No current record"));
+    if (rec.rma_Claim) {
+      toast("Claim already exists for this email", true);
+      return Promise.reject(new Error("Claim exists"));
+    }
+    var payload = { "rma_status": 100000000 };  // New
+    var fields = [];
+
+    // Pull values from the (possibly user-edited) input boxes.
+    // This way manual corrections and "Use selection" captures flow into the claim.
+    var edits = readEditedFieldValues();
+    var labels = edits.__labels || {};
+    Object.keys(edits).forEach(function(k){
+      if (k === "__labels") return;
+      payload[k] = edits[k];
+      fields.push(labels[k] || k);
+    });
+
+    // Region + Plant from the modal
+    if (extras) {
+      if (extras.region != null) {
+        payload.rma_customerregion = extras.region;
+        fields.push("Customer Region");
+      }
+      if (extras.plantId) {
+        payload["rma_AssignedPlant@odata.bind"] = "/rma_plants(" + extras.plantId + ")";
+        fields.push("Assigned Plant");
+      }
+    }
+
+    // Claim number — matches the PA flow pattern: RMA-EM-yyMMddHHmmss
+    var d = new Date();
+    var p2 = function(n){ return String(n).padStart(2, "0"); };
+    payload.rma_claimnumber = "RMA-EM-" + String(d.getFullYear()).slice(2) +
+      p2(d.getMonth()+1) + p2(d.getDate()) +
+      p2(d.getHours())   + p2(d.getMinutes()) + p2(d.getSeconds());
+
+    // Source email message id for traceability
+    if (rec.rma_messageid) payload.rma_sourceemailid = rec.rma_messageid;
+
+    var btn = $("btn-create-claim");
+    if (btn) { btn.disabled = true; btn.textContent = "Creating\u2026"; }
+
+    return odata("POST", "rma_claims", payload)
+      .then(function(newClaim){
+        // Link the email log to the new claim + mark processed
+        return odata("PATCH", "rma_emaillogs(" + rec.rma_emaillogid + ")", {
+          "rma_Claim@odata.bind": "/rma_claims(" + newClaim.rma_claimid + ")",
+          "rma_isprocessed": true
+        }).then(function(){ return newClaim; });
+      })
+      .then(function(newClaim){
+        toast("Claim " + newClaim.rma_claimnumber + " created \u2713");
+        lastRerunResult = {
+          updated: fields.length,
+          message: "Claim " + newClaim.rma_claimnumber + " created with " + fields.length +
+                   " field" + (fields.length === 1 ? "" : "s") + ": " + fields.join(", ")
+        };
+        // Reload to pick up the new linked claim UNLESS the caller is going to
+        // chain another action (e.g. send reply) and reload itself afterwards.
+        if (!(extras && extras.skipReload)) loadAll(rec.rma_emaillogid);
+        return newClaim;
+      })
+      .catch(function(err){
+        console.error("Create claim failed:", err);
+        toast("Create claim failed: " + (err.message || err), true);
+        if (btn) { btn.disabled = false; btn.textContent = "+ Create Claim"; }
+        throw err;
+      });
+  }
+
+  // ---------- Create Claim modal (region + plant prompt) ----------
+  // Loads the plant list (cached after first call), tries to pre-select the
+  // plant whose part-prefix matches the extracted Part Number, then shows a
+  // modal with the extracted summary + Region/Plant dropdowns. On submit,
+  // calls createClaimFromExtraction with the chosen extras.
+  function loadPlants(){
+    if (PLANTS_CACHE) return Promise.resolve(PLANTS_CACHE);
+    return odata("GET", "rma_plants?$select=rma_plantid,rma_name,rma_region,rma_partprefixes&$orderby=rma_name")
+      .then(function(res){
+        PLANTS_CACHE = (res.value || []).map(function(p){
+          var prefixes = (p.rma_partprefixes || "").split(/[,;]/).map(function(s){
+            return s.trim().toUpperCase();
+          }).filter(Boolean);
+          return {
+            id: p.rma_plantid,
+            name: p.rma_name || "(unnamed)",
+            region: p.rma_region,
+            prefixes: prefixes
+          };
+        });
+        return PLANTS_CACHE;
+      });
+  }
+
+  // Pick the best-matching plant for a part number using longest-prefix match.
+  // Returns null if no plant prefix matches.
+  function suggestPlantForPart(partNumber, plants){
+    if (!partNumber || !plants || !plants.length) return null;
+    var pn = String(partNumber).toUpperCase();
+    var best = null;
+    plants.forEach(function(plant){
+      plant.prefixes.forEach(function(pref){
+        if (pref && pn.indexOf(pref) === 0) {
+          if (!best || pref.length > best.prefLen) {
+            best = { plant: plant, prefLen: pref.length };
+          }
+        }
+      });
+    });
+    return best ? best.plant : null;
+  }
+
+  // ---------- Send reply to a freshly created claim ----------
+  // Used by the Create Claim modal's "Also send drafted reply" path. The form
+  // values must be captured BEFORE this runs because the pane is re-rendered
+  // when the new claim is loaded. Returns a promise; toasts on failure.
+  function sendReplyToNewClaim(newClaim, subj, body, recipient){
+    if (!newClaim || !newClaim.rma_claimid) return Promise.reject(new Error("No claim to attach reply to"));
+    if (!body) return Promise.reject(new Error("Reply body is empty"));
+    if (!recipient || !recipient.email) return Promise.reject(new Error("No recipient email"));
+    var userId = getCurrentUserId();
+    var rec = currentRecord;
+    var htmlBody = '<p>' + esc(body).replace(/\n\n+/g, '</p><p>').replace(/\n/g, '<br/>') + '</p>';
+
+    // 1. Create email activity tied to the NEW claim and mark it Sent
+    var emailPayload = {
+      subject:     subj,
+      description: htmlBody,
+      "regardingobjectid_rma_claim@odata.bind": "/rma_claims(" + newClaim.rma_claimid + ")",
+      directioncode: true,
+      email_activity_parties: userId ? [
+        { "partyid_systemuser@odata.bind": "/systemusers(" + userId + ")", participationtypemask: 1 },
+        { addressused: recipient.email, participationtypemask: 2 }
+      ] : [
+        { addressused: recipient.email, participationtypemask: 2 }
+      ]
+    };
+
+    var emailPromise = userId
+      ? odata("POST", "emails", emailPayload).then(function(newEmail){
+          var activityId = newEmail.activityid;
+          if (!activityId) return { id:null, sent:false };
+          return odata("POST", "emails(" + activityId + ")/Microsoft.Dynamics.CRM.SendEmail", { IssueSend: false })
+            .then(function(){ return { id: activityId, sent: true }; })
+            .catch(function(){
+              return odata("PATCH", "emails(" + activityId + ")", { statecode: 1, statuscode: 3 })
+                .then(function(){ return { id: activityId, sent: true }; })
+                .catch(function(){ return { id: activityId, sent: false }; });
+            });
+        })
+      : Promise.resolve({ id:null, sent:false });
+
+    return emailPromise.then(function(emailResult){
+      // 2. Outbound rma_emaillog row (queue tracking)
+      var outRec = {
+        rma_subject: subj,
+        rma_body: body,
+        rma_direction: OUTBOUND,
+        rma_recipient: recipient.email,
+        rma_sentby: getUserDisplayName(),
+        rma_sentdate: new Date().toISOString(),
+        rma_isprocessed: true,
+        rma_templateused: selectedTemplate ? selectedTemplate.rma_name : "Custom reply",
+        "rma_Claim@odata.bind": "/rma_claims(" + newClaim.rma_claimid + ")"
+      };
+      return odata("POST", "rma_emaillogs", outRec).then(function(){
+        var msg = "Claim " + newClaim.rma_claimnumber + " created and reply sent to " + recipient.email + " \u2713";
+        if (emailResult && emailResult.sent === false && emailResult.id) msg = "Claim " + newClaim.rma_claimnumber + " created; reply logged as Draft (mailbox not configured) \u2713";
+        toast(msg);
+      });
+    });
+  }
+
+  // ---------- Connect this email to an existing claim ----------
+  // Opens a search modal. User types in part of a claim number or customer
+  // name/email; we query /rma_claims and show up to 20 results. Selecting a
+  // row PATCHes the email log to point at the claim and marks it processed,
+  // then advances to the next email in the inbox.
+  function showConnectClaimModal(){
+    var rec = currentRecord;
+    if (!rec) return;
+    if (rec.rma_Claim) { toast("This email is already linked to a claim", true); return; }
+
+    // Suggest initial search text from the extracted/parsed sender info
+    var edits = readEditedFieldValues();
+    var initialQuery = (edits.rma_customername || edits.rma_customeremail || "").trim();
+
+    var bg = document.createElement("div");
+    bg.className = "cc-modal-bg";
+    bg.innerHTML =
+      '<div class="cc-modal cn-modal">'+
+        '<h3>Connect to Existing Claim <button class="cc-close" id="cn-close-btn" title="Cancel">\u2715</button></h3>'+
+        '<div class="cc-body">'+
+          '<div class="cn-hint">Search by <b>claim number</b>, <b>customer name</b>, or <b>customer email</b>. Selecting a claim will link this email to it and mark the email as processed.</div>'+
+          '<input id="cn-search" class="cn-search" type="text" placeholder="Type at least 2 characters\u2026" value="'+esc(initialQuery)+'"/>'+
+          '<div class="cc-error" id="cn-error"></div>'+
+          '<div class="cn-results" id="cn-results"><div class="cn-empty">Type above to search.</div></div>'+
+        '</div>'+
+        '<div class="cc-actions">'+
+          '<button class="secondary" id="cn-cancel-btn">Cancel</button>'+
+          '<button class="primary" id="cn-connect-btn" disabled>Connect</button>'+
+        '</div>'+
+      '</div>';
+    document.body.appendChild(bg);
+
+    var $$ = function(id){ return document.getElementById(id); };
+    var closeModal = function(){ if (bg.parentNode) bg.parentNode.removeChild(bg); };
+    var showError = function(msg){
+      var e = $$("cn-error");
+      e.textContent = msg;
+      e.classList.add("show");
+    };
+
+    $$("cn-close-btn").addEventListener("click", closeModal);
+    $$("cn-cancel-btn").addEventListener("click", closeModal);
+    bg.addEventListener("click", function(e){ if (e.target === bg) closeModal(); });
+
+    var selectedClaimId = null;
+    var selectedClaimNumber = "";
+    var searchTimer = null;
+    var lastQuery = "";
+
+    function runSearch(q){
+      $$("cn-error").classList.remove("show");
+      var qt = (q || "").trim();
+      if (qt.length < 2) {
+        $$("cn-results").innerHTML = '<div class="cn-empty">Type at least 2 characters to search.</div>';
+        selectedClaimId = null;
+        $$("cn-connect-btn").disabled = true;
+        return;
+      }
+      lastQuery = qt;
+      $$("cn-results").innerHTML = '<div class="cn-loading">Searching\u2026</div>';
+      var qs = qt.replace(/'/g, "''");
+      var filter = "contains(rma_claimnumber,'"+qs+"') or contains(rma_customername,'"+qs+"') or contains(rma_customeremail,'"+qs+"') or contains(rma_contactname,'"+qs+"')";
+      var path = "rma_claims?$select=rma_claimid,rma_claimnumber,rma_customername,rma_customeremail,rma_contactname,rma_status,rma_partnumber,createdon" +
+                 "&$filter=" + encodeURIComponent(filter) +
+                 "&$orderby=createdon desc&$top=20";
+      odata("GET", path).then(function(r){
+        if (qt !== lastQuery) return; // stale response
+        var rows = (r && r.value) || [];
+        if (!rows.length) {
+          $$("cn-results").innerHTML = '<div class="cn-empty">No matching claims found. Try a different search.</div>';
+          selectedClaimId = null;
+          $$("cn-connect-btn").disabled = true;
+          return;
+        }
+        var html = rows.map(function(c){
+          var cust = esc(c.rma_customername || c.rma_contactname || c.rma_customeremail || "(no customer)");
+          var part = c.rma_partnumber ? '<span class="cn-pill">'+esc(c.rma_partnumber)+'</span>' : '';
+          var dt = c.createdon ? new Date(c.createdon).toLocaleDateString() : "";
+          return '<div class="cn-row" data-id="'+c.rma_claimid+'" data-num="'+esc(c.rma_claimnumber||"")+'">'+
+                   '<div class="cn-num">'+esc(c.rma_claimnumber||"(no #)")+'</div>'+
+                   '<div class="cn-cust">'+cust+part+'</div>'+
+                   '<div class="cn-meta">'+esc(dt)+'</div>'+
+                 '</div>';
+        }).join('');
+        $$("cn-results").innerHTML = html;
+        Array.prototype.forEach.call(document.querySelectorAll("#cn-results .cn-row"), function(row){
+          row.addEventListener("click", function(){
+            Array.prototype.forEach.call(document.querySelectorAll("#cn-results .cn-row"), function(r){ r.classList.remove("selected"); });
+            row.classList.add("selected");
+            selectedClaimId = row.getAttribute("data-id");
+            selectedClaimNumber = row.getAttribute("data-num");
+            $$("cn-connect-btn").disabled = false;
+          });
+          row.addEventListener("dblclick", function(){
+            row.click();
+            $$("cn-connect-btn").click();
+          });
+        });
+      }).catch(function(err){
+        if (qt !== lastQuery) return;
+        $$("cn-results").innerHTML = '<div class="cn-empty">Search failed: '+esc(err.message || String(err))+'</div>';
+      });
+    }
+
+    $$("cn-search").addEventListener("input", function(){
+      var q = this.value;
+      if (searchTimer) clearTimeout(searchTimer);
+      searchTimer = setTimeout(function(){ runSearch(q); }, 250);
+    });
+
+    // Run an initial search if we have suggested text
+    if (initialQuery) runSearch(initialQuery);
+    setTimeout(function(){ $$("cn-search").focus(); $$("cn-search").select(); }, 50);
+
+    $$("cn-connect-btn").addEventListener("click", function(){
+      if (!selectedClaimId) return;
+      var btn = $$("cn-connect-btn");
+      btn.disabled = true; btn.textContent = "Connecting\u2026";
+      connectToClaim(selectedClaimId, selectedClaimNumber)
+        .then(function(){ closeModal(); })
+        .catch(function(err){
+          btn.disabled = false; btn.textContent = "Connect";
+          showError("Connect failed: " + (err.message || err));
+        });
+    });
+  }
+
+  // PATCH the current email log to point at an existing claim, mark it
+  // processed, toast, and advance to the next unprocessed email.
+  function connectToClaim(claimId, claimNumber){
+    var rec = currentRecord;
+    if (!rec) return Promise.reject(new Error("No current record"));
+    return odata("PATCH", "rma_emaillogs(" + rec.rma_emaillogid + ")", {
+      "rma_Claim@odata.bind": "/rma_claims(" + claimId + ")",
+      "rma_isprocessed": true
+    }).then(function(){
+      toast("Connected to " + (claimNumber || "claim") + " \u2713");
+      advanceToNext();
+    });
+  }
+
+  function showCreateClaimModal(){
+    var rec = currentRecord;
+    if (!rec) return;
+    if (rec.rma_Claim) { toast("Claim already exists for this email", true); return; }
+
+    // Snapshot current edited values so the modal can show them.
+    var edits = readEditedFieldValues();
+    var labels = edits.__labels || {};
+    var summaryHtml = "";
+    EXTRACTION_RULES.forEach(function(rule){
+      if (typeof rule.extract !== "function") return;
+      var v = edits[rule.claimField];
+      var valHtml = (v == null || v === "")
+        ? '<span class="cc-sum-val empty">(not set)</span>'
+        : '<span class="cc-sum-val">'+esc(String(v))+'</span>';
+      summaryHtml += '<div class="cc-sum-row"><span class="cc-sum-lbl">'+esc(rule.label)+':</span>'+valHtml+'</div>';
+    });
+
+    // Capture any drafted reply BEFORE building the modal — once we open it,
+    // the user may close it without sending, but if they DO check "also send"
+    // we need the body that was on screen at click time (the pane gets
+    // re-rendered after create which would wipe the textarea).
+    var replyBodyEl  = document.getElementById("reply-body");
+    var replySubjEl  = document.getElementById("reply-subj");
+    var draftedBody  = replyBodyEl ? (replyBodyEl.value || "").trim() : "";
+    var draftedSubj  = replySubjEl ? (replySubjEl.value || "").trim() : "";
+    var hasDraft     = !!draftedBody;
+    var alsoSendRow  = hasDraft
+      ? '<div class="cc-also-send">'+
+          '<input type="checkbox" id="cc-also-send" checked />'+
+          '<label for="cc-also-send"><b>Also send the drafted reply</b> ('+draftedBody.length+' chars) once the claim is created.'+
+            '<div class="cc-also-send-meta">Reply will be linked to the new claim and the email marked processed in one click.</div>'+
+          '</label>'+
+        '</div>'
+      : '<div class="cc-also-send disabled" title="Type a reply in the right pane to enable one-click send">'+
+          '<input type="checkbox" disabled />'+
+          '<label><b>Also send the drafted reply</b> &mdash; not available'+
+            '<div class="cc-also-send-meta">Draft a reply in the pane first (or use a template) to enable one-click create + send.</div>'+
+          '</label>'+
+        '</div>';
+
+    // Build modal shell (without dropdowns yet \u2014 loaded async)
+    var bg = document.createElement("div");
+    bg.className = "cc-modal-bg";
+    bg.innerHTML =
+      '<div class="cc-modal">'+
+        '<h3>Create Claim <button class="cc-close" id="cc-close-btn" title="Cancel">\u2715</button></h3>'+
+        '<div class="cc-body">'+
+          '<div class="cc-error" id="cc-error"></div>'+
+          '<div class="cc-section-title">Extracted from email</div>'+
+          '<div class="cc-summary">'+summaryHtml+'</div>'+
+          '<div class="cc-section-title">Assignment</div>'+
+          '<div class="cc-field">'+
+            '<label for="cc-region">Customer Region<span class="req">*</span></label>'+
+            '<select id="cc-region"><option value="">\u2014 Select \u2014</option>'+
+            REGIONS.map(function(r){
+              return '<option value="'+r.value+'">'+esc(r.label)+'</option>';
+            }).join('')+
+            '</select>'+
+          '</div>'+
+          '<div class="cc-field">'+
+            '<label for="cc-plant">Assigned Plant<span class="req">*</span></label>'+
+            '<select id="cc-plant" disabled><option>Loading plants\u2026</option></select>'+
+            '<div class="cc-hint" id="cc-plant-hint"></div>'+
+          '</div>'+
+          alsoSendRow +
+        '</div>'+
+        '<div class="cc-actions">'+
+          '<button class="secondary" id="cc-cancel-btn">Cancel</button>'+
+          '<button class="primary" id="cc-create-btn" disabled>'+(hasDraft ? "Create Claim & Send Reply" : "Create Claim")+'</button>'+
+        '</div>'+
+      '</div>';
+    document.body.appendChild(bg);
+
+    var $$ = function(id){ return document.getElementById(id); };
+    var closeModal = function(){ if (bg.parentNode) bg.parentNode.removeChild(bg); };
+    var showError = function(msg){
+      var e = $$("cc-error");
+      e.textContent = msg;
+      e.classList.add("show");
+    };
+
+    $$("cc-close-btn").addEventListener("click", closeModal);
+    $$("cc-cancel-btn").addEventListener("click", closeModal);
+    bg.addEventListener("click", function(e){ if (e.target === bg) closeModal(); });
+
+    // Load plants then populate the Plant dropdown + pre-select by part prefix
+    loadPlants().then(function(plants){
+      var partNum = edits.rma_partnumber || "";
+      var suggested = suggestPlantForPart(partNum, plants);
+      var plantSel = $$("cc-plant");
+      plantSel.innerHTML = '<option value="">\u2014 Select \u2014</option>' +
+        plants.map(function(p){
+          return '<option value="'+p.id+'" data-region="'+(p.region||"")+'">'+esc(p.name)+'</option>';
+        }).join('');
+      plantSel.disabled = false;
+      if (suggested) {
+        plantSel.value = suggested.id;
+        $$("cc-plant-hint").textContent = "Suggested from part prefix on \"" + partNum + "\". Override if wrong.";
+        // Auto-fill region from the suggested plant's region
+        if (suggested.region != null) $$("cc-region").value = String(suggested.region);
+      } else if (partNum) {
+        $$("cc-plant-hint").textContent = "No plant matched part number \"" + partNum + "\". Pick one.";
+      }
+      updateCreateBtn();
+    }).catch(function(err){
+      console.error("loadPlants failed:", err);
+      $$("cc-plant").innerHTML = '<option value="">(failed to load \u2014 ' + (err.message || err) + ')</option>';
+      showError("Could not load plant list: " + (err.message || err));
+    });
+
+    // Auto-fill region when plant changes (plant carries its home region)
+    $$("cc-plant").addEventListener("change", function(){
+      var opt = $$("cc-plant").selectedOptions[0];
+      var region = opt ? opt.getAttribute("data-region") : "";
+      if (region) $$("cc-region").value = region;
+      updateCreateBtn();
+    });
+    $$("cc-region").addEventListener("change", updateCreateBtn);
+
+    // Toggle the primary button label when "also send reply" is checked/unchecked
+    var alsoSendBox = $$("cc-also-send");
+    if (alsoSendBox) {
+      alsoSendBox.addEventListener("change", function(){
+        var b = $$("cc-create-btn");
+        if (b) b.textContent = alsoSendBox.checked ? "Create Claim & Send Reply" : "Create Claim";
+      });
+    }
+
+    function updateCreateBtn(){
+      var ok = !!$$("cc-region").value && !!$$("cc-plant").value;
+      $$("cc-create-btn").disabled = !ok;
+    }
+
+    // Submit
+    $$("cc-create-btn").addEventListener("click", function(){
+      var region = parseInt($$("cc-region").value, 10);
+      var plantId = $$("cc-plant").value;
+      if (isNaN(region) || !plantId) { showError("Region and Plant are required."); return; }
+
+      // Decide whether to chain a reply send after claim creation
+      var alsoSend = !!(alsoSendBox && alsoSendBox.checked && hasDraft);
+      var recipient = alsoSend ? getReplyRecipient() : null;
+      if (alsoSend) {
+        if (!recipient.email) {
+          showError("No recipient email \u2014 cannot send reply. Uncheck \u201CAlso send\u201D or fix the address.");
+          return;
+        }
+        // Warn on unfilled placeholder tokens
+        var unfilled = (draftedSubj + "\n" + draftedBody).match(/\{[a-zA-Z][a-zA-Z0-9_]*\}/g);
+        if (unfilled && unfilled.length > 0) {
+          var uniq = unfilled.filter(function(v,i,a){ return a.indexOf(v) === i; }).join(", ");
+          if (!confirm("The drafted reply still contains unfilled placeholders: " + uniq + "\n\nSend anyway?")) return;
+        }
+      }
+
+      var btn = $$("cc-create-btn");
+      btn.disabled = true; btn.textContent = "Creating\u2026";
+      createClaimFromExtraction({ region: region, plantId: plantId, skipReload: alsoSend })
+        .then(function(newClaim){
+          if (!alsoSend) { closeModal(); return; }
+          btn.textContent = "Sending reply\u2026";
+          return sendReplyToNewClaim(newClaim, draftedSubj, draftedBody, recipient)
+            .then(function(){
+              closeModal();
+              advanceToNext();
+            });
+        })
+        .catch(function(err){
+          btn.disabled = false;
+          btn.textContent = (alsoSendBox && alsoSendBox.checked) ? "Create Claim & Send Reply" : "Create Claim";
+          showError("Failed: " + (err.message || err));
+        });
+    });
+  }
+
+  // ---------- Save Edits to Claim ----------
+  // PATCHes the linked claim with the current values from the editable
+  // extracted-field inputs. Unlike the old "re-run extraction" feature,
+  // this DOES overwrite existing values \u2014 it's the explicit save path
+  // for user corrections and "Use selection" captures.
+  function saveEditsToClaim(){
+    var rec = currentRecord;
+    if (!rec) return;
+    var claim = rec.rma_Claim;
+    if (!claim || !claim.rma_claimid) {
+      toast("No linked claim to update", true);
+      return;
+    }
+
+    var edits = readEditedFieldValues();
+    var labels = edits.__labels || {};
+    delete edits.__labels;
+
+    // Only PATCH fields whose value differs from what's already on the claim.
+    var patch = {};
+    var changed = [];
+    Object.keys(edits).forEach(function(k){
+      var newV = edits[k];
+      var oldV = claim[k];
+      // Loose equality so "5" == 5 works for ints
+      if (String(oldV == null ? "" : oldV) !== String(newV == null ? "" : newV)) {
+        patch[k] = newV;
+        changed.push((labels[k] || k) + ": " + String(newV).slice(0, 40));
+        // Optimistic local update so the panel reflects the saved value
+        claim[k] = newV;
+      }
+    });
+
+    var btn = $("btn-rerun");
+    if (btn) { btn.disabled = true; btn.textContent = "Saving\u2026"; }
+
+    if (Object.keys(patch).length === 0) {
+      lastRerunResult = {
+        updated: 0,
+        message: "No changes to save. Edit any field above and click again."
+      };
+      if (btn) { btn.disabled = false; btn.textContent = "\uD83D\uDCBE Save to Claim"; }
+      render();
+      return;
+    }
+
+    odata("PATCH", "rma_claims(" + claim.rma_claimid + ")", patch)
+      .then(function(){
+        lastRerunResult = {
+          updated: changed.length,
+          message: "Saved " + changed.length + " field" + (changed.length===1?"":"s") +
+                   " to claim: " + changed.join("; ")
+        };
+        toast("Saved \u2713");
+        render();
+      })
+      .catch(function(err){
+        console.error("Save edits PATCH failed:", err);
+        lastRerunResult = {
+          updated: 0,
+          message: "Save failed: " + (err.message || err)
+        };
+        if (btn) { btn.disabled = false; btn.textContent = "\uD83D\uDCBE Save to Claim"; }
+        render();
+      });
+  }
+
+  // ---------- Linked Claim card ----------
+  // Compact card at the top of the pane that summarises the linked claim and
+  // gives a one-click way to jump to its form. Only rendered when a claim
+  // exists. Replaces the small "Claim: RMA-..." link in the header.
+  function renderLinkedClaimCard(rec){
+    var claim = rec.rma_Claim;
+    if (!claim) return "";
+    var statusVal   = claim.rma_status;
+    var statusKey   = STATUS_KEY[statusVal] || "new";
+    var statusLabel = claim["rma_status@OData.Community.Display.V1.FormattedValue"] || STATUS_LABEL[statusVal] || "\u2014";
+    var ageStr = "";
+    if (claim.rma_createddate) {
+      var d = new Date(claim.rma_createddate);
+      var diff = Math.floor((Date.now() - d.getTime()) / 86400000);
+      ageStr = diff === 0 ? "today" : (diff + "d old");
+    }
+    var custName = claim.rma_customername || claim.rma_contactname || "(unknown customer)";
+    return '<div class="linked-claim">'+
+      '<div class="card">'+
+        '<div class="num">'+esc(claim.rma_claimnumber || "(unnamed)")+'</div>'+
+        '<span class="status-pill status-'+statusKey+'">'+esc(statusLabel)+'</span>'+
+        '<div class="meta">'+esc(custName)+(ageStr ? ' \u00B7 '+esc(ageStr) : '')+'</div>'+
+        '<button class="open-btn" id="btn-open-claim" data-claim="'+claim.rma_claimid+'">Open \u2197</button>'+
+      '</div>'+
+    '</div>';
+  }
+
+  // ---------- Resolve / Advance section ----------
+  // Mirrors the ribbon Resolve/Deny buttons inside the pane and adds an
+  // "Advance status" button that walks the claim through New \u2192 Triage
+  // \u2192 Investigation \u2192 Decision without resolving. Resolution actions
+  // PATCH the claim AND pre-fill a matching customer reply template.
+  function renderResolveSection(rec){
+    var claim = rec.rma_Claim;
+    if (!claim) return "";
+    var statusVal = claim.rma_status;
+    if (statusVal === STATUS.CLOSED) {
+      var resLabel = claim["rma_resolution@OData.Community.Display.V1.FormattedValue"] || "Closed";
+      return '<div class="resolve-section">'+
+        '<details>'+
+          '<summary>Claim Actions <span class="rs-summary-tag"><span class="tag-closed">\u2713 CLOSED \u00B7 '+esc(resLabel)+'</span></span></summary>'+
+          '<div class="rs-body">'+
+            '<div class="rs-closed">\u2713 This claim is closed ('+esc(resLabel)+'). No further actions available from the pane.</div>'+
+          '</div>'+
+        '</details>'+
+      '</div>';
+    }
+    // Next-stage advance button
+    var nextStage = null, nextLabel = null;
+    if (statusVal === STATUS.NEW)                { nextStage = STATUS.TRIAGE;        nextLabel = "Triage"; }
+    else if (statusVal === STATUS.TRIAGE)        { nextStage = STATUS.INVESTIGATION; nextLabel = "Investigation"; }
+    else if (statusVal === STATUS.INVESTIGATION) { nextStage = STATUS.DECISION;      nextLabel = "Decision"; }
+    var advanceHtml = nextStage
+      ? '<div class="rs-buttons single"><button class="rs-btn advance" data-stage="'+nextStage+'">\u2192 Move to '+esc(nextLabel)+'</button></div>'
+      : '<div class="rs-decision-note">At Decision stage \u2014 choose a resolution below to close.</div>';
+    return '<div class="resolve-section">'+
+      '<details open>'+
+        '<summary>Claim Actions <span class="rs-summary-tag"><span class="tag-action">ACTION REQUIRED</span></span></summary>'+
+        '<div class="rs-body">'+
+          '<div class="rs-grp">Advance status</div>'+
+          advanceHtml +
+          '<div class="rs-grp">Resolve &amp; close</div>'+
+          '<div class="rs-buttons">'+
+            '<button class="rs-btn resolve" data-res="'+RESOLUTION.CREDIT+'">$ Credit Issued</button>'+
+            '<button class="rs-btn resolve" data-res="'+RESOLUTION.REPLACEMENT+'">\u{1F4E6} Replacement Sent</button>'+
+            '<button class="rs-btn resolve" data-res="'+RESOLUTION.REPAIR+'">\u{1F527} Repair Completed</button>'+
+            '<button class="rs-btn deny"    data-res="'+RESOLUTION.DENIED+'">\u2717 Deny Claim</button>'+
+          '</div>'+
+        '</div>'+
+      '</details>'+
+    '</div>';
+  }
+
+  // ---------- Status / Resolution actions ----------
+  function advanceClaimStatus(toStatus){
+    var claim = currentRecord && currentRecord.rma_Claim;
+    if (!claim || !claim.rma_claimid) { toast("No linked claim", true); return; }
+    var label = STATUS_LABEL[toStatus] || "next stage";
+    if (!confirm("Advance claim " + claim.rma_claimnumber + " to " + label + "?")) return;
+    odata("PATCH", "rma_claims(" + claim.rma_claimid + ")", { rma_status: toStatus })
+      .then(function(){
+        toast("Status \u2192 " + label + " \u2713");
+        loadAll(currentRecord.rma_emaillogid);
+      })
+      .catch(function(err){
+        console.error("Status update failed:", err);
+        toast("Status update failed: " + (err.message || err), true);
+      });
+  }
+
+  function resolveClaim(resolutionVal){
+    var claim = currentRecord && currentRecord.rma_Claim;
+    if (!claim || !claim.rma_claimid) { toast("No linked claim", true); return; }
+    var resLabel = RESOLUTION_LABEL[resolutionVal] || "Resolved";
+    if (!confirm("Close claim " + claim.rma_claimnumber + " with resolution:\n\n  " + resLabel +
+                 "\n\nA reply draft will be pre-filled for review.")) return;
+    var patch = {
+      rma_status:     STATUS.CLOSED,
+      rma_resolution: resolutionVal,
+      rma_closeddate: new Date().toISOString()
+    };
+    odata("PATCH", "rma_claims(" + claim.rma_claimid + ")", patch)
+      .then(function(){
+        // Optimistic local update so token interpolation picks up the new values
+        claim.rma_status     = STATUS.CLOSED;
+        claim.rma_resolution = resolutionVal;
+        claim["rma_status@OData.Community.Display.V1.FormattedValue"]     = "Closed";
+        claim["rma_resolution@OData.Community.Display.V1.FormattedValue"] = resLabel;
+        toast("Claim closed: " + resLabel + " \u2713");
+        // Re-render so the resolve section flips to closed-state + linked card updates
+        render();
+        // Pre-fill the matching reply template
+        var tplKey = (resolutionVal === RESOLUTION.DENIED) ? "denied" : "resolved";
+        fillBuiltInTemplate(tplKey);
+        setTimeout(function(){
+          var ta = document.querySelector(".reply textarea");
+          if (ta) { ta.focus(); ta.scrollIntoView({ behavior:"smooth", block:"center" }); }
+        }, 80);
+      })
+      .catch(function(err){
+        console.error("Resolve failed:", err);
+        toast("Resolve failed: " + (err.message || err), true);
+      });
+  }
+
+  // ---------- Built-in template fill ----------
+  function fillBuiltInTemplate(key){
+    var tpl = BUILTIN_TEMPLATES.filter(function(t){ return t.key === key; })[0];
+    if (!tpl) return;
+    var claim = (currentRecord && currentRecord.rma_Claim) || {};
+    // Pre-merge tokens that aren't in applyTokens: {subject} and {resolution_label}
+    var extras = {
+      subject:          currentRecord ? (currentRecord.rma_subject || "") : "",
+      resolution_label: claim["rma_resolution@OData.Community.Display.V1.FormattedValue"] || "\u2014"
+    };
+    function applyExtras(s){
+      return s.replace(/\{(subject|resolution_label)\}/g, function(_, t){ return extras[t] || ""; });
+    }
+    var subj = applyTokens(applyExtras(tpl.subject));
+    var body = applyTokens(applyExtras(tpl.body));
+    $("reply-subj").value = subj;
+    $("reply-body").value = body;
+    selectedTemplate = { rma_name: "Built-in: " + tpl.label, rma_emailtemplateid: "builtin_" + tpl.key };
+    // Toggle active state on the built-in button row
+    document.querySelectorAll(".tpl-btn").forEach(function(b){ b.classList.remove("active"); });
+    document.querySelectorAll(".bt").forEach(function(b){ b.classList.remove("active"); });
+    var btn = document.querySelector('.bt[data-key="' + key + '"]');
+    if (btn) btn.classList.add("active");
+    // If the preview pane is showing, refresh it with the new content
+    updateReplyPreview();
+  }
+
+  // ---------- Reply preview (token-resolved Outlook-style read-only render) ----------
+  // Shown on demand via the "Preview" toggle next to the Reply label. Re-runs the
+  // user's current draft through applyTokens() so unresolved tokens are visible
+  // and highlighted (helps catch missing {first_name} / {claim_number} before send).
+  function updateReplyPreview(){
+    var pv = document.getElementById("reply-preview");
+    if (!pv || pv.style.display === "none") return;
+    var subjEl = document.getElementById("reply-subj");
+    var bodyEl = document.getElementById("reply-body");
+    var subj = subjEl ? subjEl.value : "";
+    var body = bodyEl ? bodyEl.value : "";
+    // applyTokens replaces known tokens; unknown ones remain as {literal}
+    var resolvedSubj = applyTokens(subj);
+    var resolvedBody = applyTokens(body);
+    // Highlight any unresolved {token} so the user can spot them
+    function highlightUnresolved(s){
+      // esc first, then convert {something} into a colored chip
+      var safe = esc(s);
+      return safe.replace(/\{([a-z0-9_]+)\}/gi, function(m){
+        return '<span class="pv-unresolved" title="This placeholder couldn\u2019t be filled in \u2014 it will be sent to the customer literally as &quot;' + m + '&quot;. Edit the reply to remove it.">' + m + '</span>';
+      });
+    }
+    var recipient = getReplyRecipient();
+    var toLine = recipient.email
+      ? (recipient.name ? esc(recipient.name) + ' &lt;' + esc(recipient.email) + '&gt;' : esc(recipient.email))
+      : '<span style="color:#a8732a">(no recipient \u2014 cannot send)</span>';
+    pv.innerHTML =
+      '<div class="reply-preview-head">'+
+        '<span>\u{1F441} What the customer will see</span>'+
+        '<span class="pv-tag">placeholders filled in</span>'+
+      '</div>'+
+      '<div class="reply-preview-meta">'+
+        '<div class="pv-row"><b>To:</b> ' + toLine + '</div>'+
+        '<div class="pv-row"><b>Subject:</b> ' + highlightUnresolved(resolvedSubj || '(no subject)') + '</div>'+
+      '</div>'+
+      '<div class="reply-preview-body">' + highlightUnresolved(resolvedBody || '(empty)') + '</div>';
+  }
+
+  // ---------- current user (for email activity sender) ----------
+  function getCurrentUserId(){
+    var X = getParentXrm();
+    if (X && X.Utility && X.Utility.getGlobalContext) {
+      try {
+        var id = X.Utility.getGlobalContext().userSettings.userId || "";
+        return id.replace(/[{}]/g, "");
+      } catch(e){}
+    }
+    return null;
+  }
+
+  // ---------- render ----------
+  function renderInboxZero(){
+    $("pane").innerHTML =
+      '<div class="empty-state">' +
+        '<div class="big">🎉</div>' +
+        '<h3>Inbox zero!</h3>' +
+        '<p>All unprocessed inbound emails have been handled.</p>' +
+        '<button class="btn primary" onclick="window.parent.Xrm.Navigation.navigateTo({pageType:&quot;entitylist&quot;,entityName:&quot;rma_emaillog&quot;})">Back to inbox</button>' +
+      '</div>';
+  }
+
+  function render(){
+    var rec = currentRecord;
+    var procPill = rec.rma_isprocessed === true
+      ? '<span class="pill proc">Processed</span>'
+      : '<span class="pill unproc">Unprocessed</span>';
+
+    var body = rec.rma_body || rec.rma_bodypreview || "";
+    var bodyHtml = body
+      ? (looksLikeHtml(body) ? sanitize(body) : formatPlainTextEmail(body))
+      : '<em style="color:#888">No body captured.</em>';
+
+    // Sender display: prefer the actual person's name when known (extracted
+    // from the body for web-form intake; otherwise the linked claim contact)
+    // so the header reads like a real email instead of "noreply@ametek.com".
+    var claim = rec.rma_Claim || {};
+    var hasClaim = !!(claim && claim.rma_claimid);
+    var senderExt = {};
+    if (!hasClaim) {
+      try { senderExt = getEffectiveExtraction(rec) || {}; } catch (e) { senderExt = {}; }
+    }
+    var fromAddr = rec.rma_fromaddress || "";
+    var senderName = claim.rma_contactname || claim.rma_customername
+                  || senderExt.rma_contactname || senderExt.rma_customername || "";
+    var senderEmail = senderExt.rma_customeremail || claim.rma_customeremail || fromAddr || "";
+    var receivedFmt = rec["rma_receiveddate@OData.Community.Display.V1.FormattedValue"] || "";
+    var avatarChars = initialsFor(senderName, senderEmail);
+    var senderRowHtml =
+      '<div class="sender-row">'+
+        '<div class="avatar">'+esc(avatarChars)+'</div>'+
+        '<div class="who">'+
+          '<div class="who-name">'+esc(senderName || senderEmail || "(unknown sender)")+'</div>'+
+          '<div class="who-meta">'+
+            (senderName && senderEmail ? '&lt;'+esc(senderEmail)+'&gt;' : '') +
+            (fromAddr && senderEmail && fromAddr.toLowerCase() !== senderEmail.toLowerCase()
+              ? ' &middot; <span style="color:#888">via '+esc(fromAddr)+'</span>' : '') +
+          '</div>'+
+        '</div>'+
+        (receivedFmt ? '<div class="when">'+esc(receivedFmt)+'</div>' : '') +
+      '</div>';
+
+    // Built-in quick templates row — always shown. The kbd hint badges (1..4)
+    // double as a keyboard cheat-sheet so users can press 1-4 to apply.
+    var builtinTplHtml = '<div class="builtin-templates">' +
+      BUILTIN_TEMPLATES.map(function(t, i){
+        return '<button class="bt" data-key="'+t.key+'"><span class="kn">'+(i+1)+'</span>'+esc(t.label)+'</button>';
+      }).join('') +
+    '</div>';
+
+    var tplHtml = "";
+    if (templates.length === 0) {
+      tplHtml = '<div class="tpl-empty" style="font-size:11px;color:#888;font-style:italic;">(no custom templates in Dataverse)</div>';
+    } else {
+      tplHtml = templates.map(function(t){
+        return '<button class="tpl-btn" data-id="'+t.rma_emailtemplateid+'">'+
+          '<div class="tpl-name">'+esc(t.rma_name)+'</div>'+
+          (t.rma_subject ? '<div class="tpl-sub">'+esc(t.rma_subject)+'</div>' : '') +
+        '</button>';
+      }).join('');
+    }
+
+    // Recipient row (single source of truth used by render + send)
+    var recipient = getReplyRecipient();
+    var toRowHtml;
+    if (recipient.email) {
+      toRowHtml = '<div class="to-row">'+
+        '<span class="to-label">To:</span> '+
+        (recipient.name ? '<span class="to-name">'+esc(recipient.name)+'</span> <span class="to-addr">&lt;'+esc(recipient.email)+'&gt;</span>'
+                        : '<span class="to-name">'+esc(recipient.email)+'</span>')+
+      '</div>';
+    } else {
+      toRowHtml = '<div class="to-row"><span class="to-label">To:</span> <span class="to-warn">(no recipient email \u2014 cannot send)</span></div>';
+    }
+
+    $("pane").innerHTML =
+      '<div class="hdr">'+
+        '<div class="subj">'+esc(rec.rma_subject||"(no subject)")+procPill+'</div>'+
+        senderRowHtml +
+      '</div>'+
+      // Three named columns. CSS decides how many show side-by-side based on
+      // the layout pick (Auto / 2 col / 3 col) + screen width:
+      //   EMAIL : just the raw email body (reading)
+      //   DATA  : linked claim card + extracted data + claim actions (review)
+      //   REPLY : templates + reply box + send/skip/done actions (composing)
+      // In 2-col mode, EMAIL and DATA stack into the left column.
+      // In stacked (narrow) mode all three flow vertically.
+      '<div class="pane-cols">'+
+        '<div class="pane-col pane-col-email">'+
+          '<div class="body-wrap">'+
+            '<div class="body-label">Email body</div>'+
+            '<div class="body">'+bodyHtml+'</div>'+
+          '</div>'+
+        '</div>'+
+        '<div class="pane-col pane-col-data">'+
+          renderLinkedClaimCard(rec)+
+          renderExtractedPanel(rec)+
+          renderResolveSection(rec)+
+        '</div>'+
+        '<div class="pane-col pane-col-reply">'+
+          '<div class="templates">'+
+            '<div class="lbl">Reply with template</div>'+
+            // When no claim is linked, the {claim_number} / {customer_name} etc.
+            // placeholders won't auto-fill on the built-in templates. Give the
+            // user a one-click escape hatch to open the Create Claim modal first.
+            (function(){
+              var hasClaim = !!rec._rma_claim_value;
+              if (hasClaim) return "";
+              return '<div class="tpl-no-claim-tip">'+
+                '<span>\u26A0\uFE0F No claim linked yet. Placeholders like <code>{claim_number}</code> won\u2019t fill in.</span> '+
+                '<button class="tip-link" id="btn-create-claim-from-tip" type="button">+ Create claim first</button>'+
+              '</div>';
+            })() +
+            builtinTplHtml +
+            tplHtml +
+          '</div>'+
+          '<div class="reply">'+
+            '<div class="lbl-row">'+
+              '<div class="lbl">Reply (edit before sending)</div>'+
+              '<span class="kbd-hint"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> sends</span>'+
+              '<button class="reply-preview-toggle" id="btn-preview-toggle" type="button" title="Show what the customer will see (placeholders like {first_name} filled in with real values)">\u{1F441} Preview</button>'+
+            '</div>'+
+            toRowHtml +
+            '<input id="reply-subj" class="subj-in" placeholder="Subject" value="Re: '+esc(rec.rma_subject||"")+'"/>'+
+            '<textarea id="reply-body" placeholder="Write a reply, or click a template above\u2026"></textarea>'+
+            '<div class="compose-hint">Drag the bottom edge to resize. Tokens like {first_name} are auto-filled from the linked claim.</div>'+
+            '<div class="reply-preview" id="reply-preview" style="display:none"></div>'+
+          '</div>'+
+          // ---- Footer actions ----
+          // No claim yet  -> primary action is "+ Create Claim"; replying is allowed but secondary
+          //                  (use case: ask the requester for missing info before opening a claim).
+          // Has claim     -> primary action is "Send Reply" (creates email activity on the claim timeline).
+          (function(){
+            var hasClaim = !!rec._rma_claim_value;
+            var primaryBtn = hasClaim
+              ? '<button class="btn primary" id="btn-send" title="Creates an email activity on the claim timeline (marked Sent) and advances to the next email">\u{1F4E4} Send Reply \u2192</button>'
+              : '<button class="btn primary" id="btn-create-claim-footer" title="Create an RMA claim from this email and link them together">+ Create Claim</button>';
+            var secondaryRow = hasClaim
+              ? ''
+              : '<div class="row" style="margin-top:6px">'+
+                  '<button class="btn ghost" id="btn-send" title="Reply without creating a claim (e.g. to ask the requester for more info). The reply will NOT be linked to a claim.">\u{1F4E4} Send Reply (no claim) \u2192</button>'+
+                '</div>';
+            return '<div class="actions">'+
+              '<div class="row">'+ primaryBtn +'</div>'+
+              secondaryRow +
+              '<div class="row nav-row" style="margin-top:6px">'+
+                '<button class="btn ghost" id="btn-back"'+(hasBackTarget(rec.rma_emaillogid) ? '' : ' disabled')+' title="Go back to the previous email">\u2190 Back</button>'+
+                '<button class="btn ghost" id="btn-skip" title="Skip to next unprocessed email">Skip \u2192</button>'+
+              '</div>'+
+              '<div class="row" style="margin-top:6px">'+
+                '<button class="btn ghost" id="btn-done" title="Mark as processed without replying">Mark Done</button>'+
+              '</div>'+
+              '<div class="queue">Queue: <b>'+queueState.remaining+'</b> of <b>'+queueState.total+'</b> remaining</div>'+
+            '</div>';
+          })()+
+        '</div>'+ // /.pane-col-reply
+      '</div>';  // /.pane-cols
+
+    // Wire events
+    document.querySelectorAll(".tpl-btn").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var id = this.getAttribute("data-id");
+        var tpl = templates.filter(function(x){ return x.rma_emailtemplateid === id; })[0];
+        if (tpl) fillTemplate(tpl);
+      });
+    });
+    document.querySelectorAll(".bt").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        fillBuiltInTemplate(this.getAttribute("data-key"));
+      });
+    });
+    $("btn-send").addEventListener("click", sendAndNext);
+    $("btn-skip").addEventListener("click", skip);
+    $("btn-done").addEventListener("click", markDone);
+    var backBtn = $("btn-back");
+    if (backBtn && !backBtn.disabled) backBtn.addEventListener("click", goBack);
+    // Preview toggle for the reply box. When ON, shows an Outlook-style read-only
+    // render of subject + body with all {tokens} resolved (e.g. "Hi Rath," instead
+    // of "Hi {first_name},"). Updates live as the user types.
+    var pvBtn = document.getElementById("btn-preview-toggle");
+    if (pvBtn) {
+      pvBtn.addEventListener("click", function(){
+        var pv = document.getElementById("reply-preview");
+        if (!pv) return;
+        var on = pv.style.display === "none";
+        pv.style.display = on ? "block" : "none";
+        pvBtn.classList.toggle("active", on);
+        if (on) updateReplyPreview();
+      });
+    }
+    var rbody = document.getElementById("reply-body");
+    var rsubj = document.getElementById("reply-subj");
+    if (rbody) rbody.addEventListener("input", updateReplyPreview);
+    if (rsubj) rsubj.addEventListener("input", updateReplyPreview);
+    var rerunBtn = $("btn-rerun");
+    if (rerunBtn) rerunBtn.addEventListener("click", saveEditsToClaim);
+    var createBtn = $("btn-create-claim");
+    if (createBtn) createBtn.addEventListener("click", showCreateClaimModal);
+    // Footer's Create Claim mirrors the inline one (only present when no claim is linked)
+    var createBtnFooter = $("btn-create-claim-footer");
+    if (createBtnFooter) createBtnFooter.addEventListener("click", showCreateClaimModal);
+    // "+ Create claim first" link inside the no-claim tip above the template buttons
+    var createBtnTip = $("btn-create-claim-from-tip");
+    if (createBtnTip) createBtnTip.addEventListener("click", showCreateClaimModal);
+    // Connect-to-Existing button (CTA banner only, only when no claim is linked)
+    var connectBtn = $("btn-connect-claim");
+    if (connectBtn) connectBtn.addEventListener("click", showConnectClaimModal);
+
+    // Delegated handlers for editable extracted-field rows:
+    //  - btn-capture: drop highlighted text into the adjacent input
+    //  - ex-input change: mark as "edited" so user sees what they changed
+    var exPanel = document.querySelector(".extracted");
+    if (exPanel) {
+      exPanel.addEventListener("click", function(e){
+        var btn = e.target.closest && e.target.closest(".btn-capture");
+        if (!btn) return;
+        var field = btn.getAttribute("data-capture-for");
+        var input = exPanel.querySelector('.ex-input[data-claim-field="' + field + '"]');
+        if (input) captureSelectionInto(input);
+      });
+      exPanel.addEventListener("input", function(e){
+        var inp = e.target;
+        if (!inp || !inp.classList || !inp.classList.contains("ex-input")) return;
+        var original = inp.getAttribute("data-original") || "";
+        if ((inp.value || "") !== original) inp.classList.add("edited");
+        else inp.classList.remove("edited");
+        if ((inp.value || "").trim() === "") inp.classList.add("empty");
+        else inp.classList.remove("empty");
+      });
+    }
+    var openClaimBtn = $("btn-open-claim");
+    if (openClaimBtn) openClaimBtn.addEventListener("click", function(){
+      var cid = this.getAttribute("data-claim");
+      var X = getParentXrm();
+      if (X && X.Navigation && X.Navigation.openForm) {
+        X.Navigation.openForm({ entityName:"rma_claim", entityId:cid }, { target: 2 });
+      }
+    });
+    document.querySelectorAll(".rs-btn.advance").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var stage = parseInt(this.getAttribute("data-stage"), 10);
+        if (!isNaN(stage)) advanceClaimStatus(stage);
+      });
+    });
+    document.querySelectorAll(".rs-btn.resolve, .rs-btn.deny").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var res = parseInt(this.getAttribute("data-res"), 10);
+        if (!isNaN(res)) resolveClaim(res);
+      });
+    });
+  }
+
+  function showError(msg){
+    $("pane").innerHTML = '<div class="err-box">'+esc(msg||"Could not load record.")+'</div>';
+  }
+
+  // ============================================================
+  // FULL-PAGE INBOX MODE
+  // ============================================================
+  var INBOX_MODE = false;
+  var inboxFilter = "unproc"; // 'unproc' | 'today' | 'all' | 'proc'
+  var inboxSearch = "";       // free-text client-side filter applied on top of inboxFilter
+  var inboxList = [];
+  var inboxCounts = { unproc: 0, today: 0, all: 0, proc: 0 };
+  var inboxSelectedId = null;
+
+  function detectMode(){
+    // Explicit override wins
+    var qs = window.location.search;
+    if (/[?&]mode=full/.test(qs)) return "full";
+    if (/[?&]mode=pane/.test(qs)) return "pane";
+    // Heuristic: pane mode is when we're embedded in a form (parent has Xrm.Page with this record)
+    var X = getParentXrm();
+    var hasForm = false;
+    try { hasForm = !!(X && X.Page && X.Page.data && X.Page.data.entity && X.Page.data.entity.getId && X.Page.data.entity.getId()); } catch(e){}
+    return hasForm ? "pane" : "full";
+  }
+
+  function getInitialEmailIdFromHash(){
+    var h = (window.location.hash || "").replace(/^#/, "");
+    if (/^[0-9a-fA-F-]{36}$/.test(h)) return h.toLowerCase();
+    var m = h.match(/id=([0-9a-fA-F-]{36})/);
+    return m ? m[1].toLowerCase() : null;
+  }
+
+  function setHashEmail(id){
+    try {
+      var newHash = id ? ("#"+id) : "";
+      if (window.location.hash !== newHash) {
+        history.replaceState(null, "", window.location.pathname + window.location.search + newHash);
+      }
+    } catch(e){}
+  }
+
+  function buildInboxShellHtml(){
+    return '<div class="inbox-shell">' +
+      '<div class="inbox-top">' +
+        '<div class="title">' +
+          '<svg class="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>' +
+          'RMA Queue' +
+        '</div>' +
+        '<button class="chip" data-filter="unproc"><span>Unprocessed</span><span class="badge" id="cnt-unproc">0</span></button>' +
+        '<button class="chip" data-filter="today"><span>Today</span><span class="badge" id="cnt-today">0</span></button>' +
+        '<button class="chip" data-filter="all"><span>All</span><span class="badge" id="cnt-all">0</span></button>' +
+        '<button class="chip" data-filter="proc"><span>Processed</span><span class="badge" id="cnt-proc">0</span></button>' +
+        '<div class="spacer"></div>' +
+        '<div class="layout-toggle" id="layout-toggle" role="group" aria-label="Layout" title="Switch layout (Auto / 2 columns / 3 columns)">' +
+          '<button class="lt-btn" data-layout="auto" title="Auto \u2014 picks 1, 2, or 3 columns based on window width"><span class="lt-glyph">A</span>Auto</button>' +
+          '<button class="lt-btn" data-layout="2col" title="2 columns \u2014 Email + Data on the left, Reply on the right"><span class="lt-glyph">\u2225</span>2 col</button>' +
+          '<button class="lt-btn" data-layout="3col" title="3 columns \u2014 Email \u2502 Claim Data \u2502 Response"><span class="lt-glyph">\u2502\u2502\u2502</span>3 col</button>' +
+        '</div>' +
+        '<button class="help-btn" id="inbox-help" title="Help and User Guide (?)">?</button>' +
+        '<button class="refresh-btn" id="inbox-refresh" title="Refresh">' +
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>' +
+        '</button>' +
+      '</div>' +
+      '<div class="inbox-search-row">' +
+        '<input type="text" class="inbox-search" id="inbox-search" placeholder="Search subject, sender, body, customer\u2026" autocomplete="off" />' +
+        '<span class="filter-hint" id="inbox-search-hint"></span>' +
+      '</div>' +
+      '<div class="inbox-body">' +
+        '<aside class="inbox-list" id="inbox-list">' +
+          '<div class="list-loading">Loading inbox\u2026</div>' +
+        '</aside>' +
+        '<main class="inbox-reader-wrap" id="inbox-reader-wrap">' +
+          '<div class="inbox-empty-reader" id="inbox-empty">' +
+            '<div class="big">\u{1F4E5}</div>' +
+            '<div class="h">Select an email</div>' +
+            '<div class="sub">Click a message from the list on the left to view its details, extracted claim data, and reply options.</div>' +
+          '</div>' +
+        '</main>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function mountInboxShell(){
+    document.body.classList.add("inbox-mode");
+    // Replace the pane div with the full shell; preserve toast
+    var pane = document.getElementById("pane");
+    var shellWrap = document.createElement("div");
+    shellWrap.innerHTML = buildInboxShellHtml();
+    var shell = shellWrap.firstChild;
+    pane.parentNode.replaceChild(shell, pane);
+    // The right-side reader contains a fresh #pane (created lazily when an email loads)
+    // Wire chip clicks
+    document.querySelectorAll(".inbox-top .chip").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        inboxFilter = this.getAttribute("data-filter");
+        updateChipActive();
+        loadAndRenderInboxList();
+      });
+    });
+    var refreshBtn = document.getElementById("inbox-refresh");
+    if (refreshBtn) refreshBtn.addEventListener("click", function(){ loadAndRenderInboxList(); if (inboxSelectedId) loadAll(inboxSelectedId); });
+    // Layout toggle (Auto / 2 col / 3 col)
+    applySavedLayout();
+    document.querySelectorAll("#layout-toggle .lt-btn").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        setLayout(this.getAttribute("data-layout"));
+      });
+    });
+    // Help button
+    var helpBtn = document.getElementById("inbox-help");
+    if (helpBtn) helpBtn.addEventListener("click", showKeyboardHelp);
+    // Search input (client-side filter on the already-loaded list)
+    var searchInput = document.getElementById("inbox-search");
+    if (searchInput) {
+      var debTimer = null;
+      searchInput.addEventListener("input", function(){
+        var v = this.value;
+        if (debTimer) clearTimeout(debTimer);
+        debTimer = setTimeout(function(){ inboxSearch = v; renderInboxList(); }, 150);
+      });
+      // Esc to clear
+      searchInput.addEventListener("keydown", function(e){
+        if (e.key === "Escape" && this.value) { e.preventDefault(); this.value = ""; inboxSearch = ""; renderInboxList(); }
+      });
+    }
+    updateChipActive();
+  }
+
+  function updateChipActive(){
+    document.querySelectorAll(".inbox-top .chip").forEach(function(btn){
+      if (btn.getAttribute("data-filter") === inboxFilter) btn.classList.add("active");
+      else btn.classList.remove("active");
+    });
+  }
+
+  // ---------- Layout (Auto / 2-col / 3-col) ----------
+  // Persisted in localStorage so the user's pick survives reloads. The active
+  // class is applied to <body> so CSS media queries can decide actual breakpoints.
+  var LAYOUT_KEY = "rma_email_inbox_layout";
+  function readSavedLayout(){
+    try { return localStorage.getItem(LAYOUT_KEY) || "auto"; } catch(e){ return "auto"; }
+  }
+  function saveLayout(name){
+    try { localStorage.setItem(LAYOUT_KEY, name); } catch(e){}
+  }
+  function applySavedLayout(){ setLayout(readSavedLayout(), /*skipSave*/ true); }
+  function setLayout(name){
+    var skipSave = arguments.length > 1 && arguments[1] === true;
+    if (name !== "auto" && name !== "2col" && name !== "3col") name = "auto";
+    document.body.classList.remove("layout-auto", "layout-2col", "layout-3col");
+    // "auto" intentionally adds no class so the default CSS media queries apply
+    if (name === "2col") document.body.classList.add("layout-2col");
+    else if (name === "3col") document.body.classList.add("layout-3col");
+    document.querySelectorAll("#layout-toggle .lt-btn").forEach(function(btn){
+      if (btn.getAttribute("data-layout") === name) btn.classList.add("is-active");
+      else btn.classList.remove("is-active");
+    });
+    if (!skipSave) saveLayout(name);
+  }
+
+  function loadInboxList(){
+    // Filter clauses
+    var filterMap = {
+      unproc: "rma_direction eq " + INBOUND + " and rma_isprocessed eq false",
+      proc:   "rma_direction eq " + INBOUND + " and rma_isprocessed eq true",
+      all:    "rma_direction eq " + INBOUND,
+      today:  "rma_direction eq " + INBOUND + " and Microsoft.Dynamics.CRM.Today(PropertyName='rma_receiveddate')"
+    };
+    var f = filterMap[inboxFilter] || filterMap.unproc;
+    // Expand the linked claim so we can show the real contact / customer name
+    // (the From: address is almost always 'noreply@ametek.com' because emails come from the web form)
+    var path = "rma_emaillogs?$select=rma_emaillogid,rma_subject,rma_fromaddress,rma_receiveddate,rma_bodypreview,rma_isprocessed,_rma_claim_value" +
+               "&$expand=rma_Claim($select=rma_contactname,rma_customername)" +
+               "&$filter=" + encodeURIComponent(f) +
+               "&$orderby=rma_receiveddate desc&$top=200";
+    return odata("GET", path).then(function(r){
+      inboxList = (r && r.value) || [];
+      return inboxList;
+    });
+  }
+
+  // Resolve the best display name for an inbox row. Priority:
+  //   1. linked claim contact / customer (most reliable; already extracted & saved)
+  //   2. "Company:" line in the body preview (web-form structured field)
+  //   3. signature-block guess in the body preview
+  //   4. friendly-cased local part of the From: address (skip noreply forwarders)
+  //   5. "AMETEK Web Form" placeholder if the only sender is noreply@ametek.com
+  function inboxRowSender(e){
+    var claim = e.rma_Claim;
+    if (claim) {
+      if (claim.rma_contactname)  return claim.rma_contactname;
+      if (claim.rma_customername) return claim.rma_customername;
+    }
+    var preview = e.rma_bodypreview || "";
+    var m = preview.match(/Company(?:\s*Name)?\s*:\s*([^\r\n]+)/i);
+    if (m) return m[1].trim();
+    m = preview.match(/(?:regards|thanks|sincerely|cheers|best),?\s*\n+\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})/i);
+    if (m) return m[1].trim();
+    var fa = e.rma_fromaddress || "";
+    if (fa && !/noreply|no-reply|notification|donotreply/i.test(fa)) {
+      var local = fa.split("@")[0] || "";
+      return local.replace(/[._-]+/g, " ").replace(/\b\w/g, function(c){ return c.toUpperCase(); });
+    }
+    if (fa) return "AMETEK Web Form";
+    return "(unknown sender)";
+  }
+
+  function loadInboxCounts(){
+    // Fire 4 lightweight counts in parallel
+    var queries = [
+      { key:"unproc", filter:"rma_direction eq " + INBOUND + " and rma_isprocessed eq false" },
+      { key:"today",  filter:"rma_direction eq " + INBOUND + " and Microsoft.Dynamics.CRM.Today(PropertyName='rma_receiveddate')" },
+      { key:"all",    filter:"rma_direction eq " + INBOUND },
+      { key:"proc",   filter:"rma_direction eq " + INBOUND + " and rma_isprocessed eq true" }
+    ];
+    return Promise.all(queries.map(function(q){
+      var path = "rma_emaillogs?$select=rma_emaillogid&$filter=" + encodeURIComponent(q.filter) + "&$top=1&$count=true";
+      return odata("GET", path).then(function(r){
+        var n = (r && (r["@odata.count"] !== undefined ? r["@odata.count"] : ((r.value||[]).length))) || 0;
+        inboxCounts[q.key] = n;
+      }).catch(function(){ inboxCounts[q.key] = 0; });
+    })).then(function(){
+      ["unproc","today","all","proc"].forEach(function(k){
+        var el = document.getElementById("cnt-"+k);
+        if (el) el.textContent = inboxCounts[k];
+      });
+    });
+  }
+
+  function fmtRowTime(iso, fmtFromOData){
+    // Prefer the OData FormattedValue when present; otherwise compress to "MM/DD" or "h:mm a"
+    var d = iso ? new Date(iso) : null;
+    if (!d || isNaN(d.getTime())) return fmtFromOData || "";
+    var now = new Date();
+    var sameDay = d.toDateString() === now.toDateString();
+    if (sameDay) {
+      var h = d.getHours(); var m = d.getMinutes(); var ap = h >= 12 ? "PM" : "AM";
+      var hh = ((h+11)%12)+1; var mm = m < 10 ? "0"+m : m;
+      return hh + ":" + mm + " " + ap;
+    }
+    var diffDays = Math.floor((now - d) / 86400000);
+    if (diffDays < 7) {
+      return ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getDay()];
+    }
+    return (d.getMonth()+1) + "/" + d.getDate();
+  }
+
+  function renderInboxList(){
+    var host = document.getElementById("inbox-list");
+    if (!host) return;
+    // Apply client-side search on top of whatever the server returned for the active filter.
+    var q = (inboxSearch || "").trim().toLowerCase();
+    var filtered = inboxList;
+    if (q) {
+      filtered = inboxList.filter(function(e){
+        var hay = [
+          e.rma_subject, e.rma_fromaddress, e.rma_bodypreview,
+          (e.rma_Claim ? e.rma_Claim.rma_contactname  : ""),
+          (e.rma_Claim ? e.rma_Claim.rma_customername : ""),
+          inboxRowSender(e)
+        ].join(" \u00b7 ").toLowerCase();
+        return hay.indexOf(q) !== -1;
+      });
+    }
+    // Update the small hint next to the search box ("3 of 27")
+    var hint = document.getElementById("inbox-search-hint");
+    if (hint) {
+      hint.innerHTML = q
+        ? '<b>' + filtered.length + '</b> of ' + inboxList.length + ' match'
+        : '';
+    }
+    if (!filtered || filtered.length === 0) {
+      if (q) {
+        host.innerHTML = '<div class="list-empty">' +
+          '<div class="big">\u{1F50D}</div>' +
+          '<div><b>No matches</b></div>' +
+          '<div style="margin-top:6px;font-size:12px;">Nothing in this view matches "<i>' + esc(q) + '</i>".</div>' +
+        '</div>';
+      } else {
+        host.innerHTML = '<div class="list-empty">' +
+          '<div class="big">\u{1F389}</div>' +
+          '<div><b>Inbox zero!</b></div>' +
+          '<div style="margin-top:6px;font-size:12px;">No emails match the current filter.</div>' +
+        '</div>';
+      }
+      return;
+    }
+    var rows = filtered.map(function(e){
+      var id = e.rma_emaillogid;
+      var selected = (id && inboxSelectedId && id.toLowerCase() === inboxSelectedId.toLowerCase()) ? " selected" : "";
+      var from = inboxRowSender(e);
+      var subj = e.rma_subject || "(no subject)";
+      var prev = (e.rma_bodypreview || "").replace(/\s+/g, " ").trim();
+      var t = fmtRowTime(e.rma_receiveddate, e["rma_receiveddate@OData.Community.Display.V1.FormattedValue"]);
+      var linked = !!e._rma_claim_value;
+      var pill = e.rma_isprocessed
+        ? '<span class="mini-pill proc">Processed</span>'
+        : '<span class="mini-pill unproc">New</span>';
+      var linkedPill = linked ? '<span class="mini-pill linked">Linked</span>' : '';
+      return '<div class="email-row'+selected+'" data-id="'+esc(id)+'">' +
+        '<div class="row-top">' +
+          '<div class="from">'+esc(from)+'</div>' +
+          '<div class="time">'+esc(t)+'</div>' +
+        '</div>' +
+        '<div class="subj">'+esc(subj)+'</div>' +
+        (prev ? '<div class="preview">'+esc(prev)+'</div>' : '') +
+        '<div class="row-meta">'+pill+linkedPill+'</div>' +
+      '</div>';
+    }).join("");
+    host.innerHTML = rows;
+    host.querySelectorAll(".email-row").forEach(function(row){
+      row.addEventListener("click", function(){
+        var id = this.getAttribute("data-id");
+        selectInboxEmail(id);
+      });
+    });
+  }
+
+  function selectInboxEmail(id){
+    if (!id) return;
+    inboxSelectedId = id;
+    setHashEmail(id);
+    renderInboxList(); // refresh selected highlight
+    ensurePaneContainer();
+    loadAll(id);
+  }
+
+  function ensurePaneContainer(){
+    // Create or reset a #pane inside the reader so render() has its target
+    var wrap = document.getElementById("inbox-reader-wrap");
+    if (!wrap) return;
+    var existing = document.getElementById("pane");
+    if (existing && existing.parentNode === wrap) {
+      existing.innerHTML = '<div class="loading">Loading\u2026</div>';
+      return;
+    }
+    wrap.innerHTML = '<div class="pane" id="pane"><div class="loading">Loading\u2026</div></div>';
+  }
+
+  function showEmptyReader(){
+    var wrap = document.getElementById("inbox-reader-wrap");
+    if (!wrap) return;
+    wrap.innerHTML = '<div class="inbox-empty-reader" id="inbox-empty">' +
+      '<div class="big">\u{1F4E5}</div>' +
+      '<div class="h">Select an email</div>' +
+      '<div class="sub">Click a message from the list on the left to view its details, extracted claim data, and reply options.</div>' +
+    '</div>';
+  }
+
+  function loadAndRenderInboxList(){
+    var host = document.getElementById("inbox-list");
+    if (host) host.innerHTML = '<div class="list-loading">Loading\u2026</div>';
+    return Promise.all([loadInboxList(), loadInboxCounts()])
+      .then(renderInboxList)
+      .catch(function(err){
+        console.error("Inbox list load failed:", err);
+        if (host) host.innerHTML = '<div class="list-empty"><div>Failed to load.</div><div style="font-size:11px;margin-top:6px;">'+esc(err.message||err)+'</div></div>';
+      });
+  }
+
+  function initFullMode(){
+    INBOX_MODE = true;
+    mountInboxShell();
+    installKeyboardShortcuts();
+    var initialId = getInitialEmailIdFromHash();
+    if (initialId) inboxSelectedId = initialId;
+    loadAndRenderInboxList().then(function(){
+      if (initialId) {
+        ensurePaneContainer();
+        loadAll(initialId);
+      } else if (inboxList.length > 0 && inboxFilter === "unproc") {
+        // Auto-select first unprocessed email for a fast-start experience
+        selectInboxEmail(inboxList[0].rma_emaillogid);
+      }
+    });
+    // Hash change navigation (e.g., user pastes a new id)
+    window.addEventListener("hashchange", function(){
+      var id = getInitialEmailIdFromHash();
+      if (id && id !== inboxSelectedId) selectInboxEmail(id);
+    });
+  }
+
+  // ============================================================
+  // KEYBOARD SHORTCUTS (inbox / full-page mode only)
+  // ============================================================
+  // j / k         next / previous email in the loaded list
+  // 1..4          apply built-in template (Acknowledge/Need Info/Resolved/Denied)
+  // Ctrl+Enter    send & advance (works from inside the reply textarea)
+  // /             focus the search box
+  // ?             show the cheat-sheet overlay
+  // Esc           close overlay (or clear search if focused on search)
+  function installKeyboardShortcuts(){
+    document.addEventListener("keydown", function(e){
+      if (!INBOX_MODE) return;
+      var tgt = e.target || {};
+      var tag = (tgt.tagName || "").toLowerCase();
+      var inField = (tag === "input" || tag === "textarea" || tgt.isContentEditable);
+      // Always-allowed combos (even while typing)
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        var sendBtn = document.getElementById("btn-send");
+        if (sendBtn && !sendBtn.disabled) { e.preventDefault(); sendBtn.click(); }
+        return;
+      }
+      if (e.key === "Escape") {
+        var overlay = document.getElementById("kbd-help-overlay");
+        if (overlay) { overlay.parentNode.removeChild(overlay); return; }
+        if (tag === "input" && tgt.id === "inbox-search" && tgt.value) {
+          // handled by the input's own keydown
+          return;
+        }
+      }
+      // From here on, ignore shortcuts when user is typing in a field
+      if (inField) return;
+      // "/" focuses search
+      if (e.key === "/") {
+        var s = document.getElementById("inbox-search");
+        if (s) { e.preventDefault(); s.focus(); s.select && s.select(); }
+        return;
+      }
+      // "?" or Shift+/ shows help
+      if (e.key === "?" || (e.shiftKey && e.key === "/")) {
+        e.preventDefault();
+        showKeyboardHelp();
+        return;
+      }
+      // j / k navigation
+      if (e.key === "j" || e.key === "J") {
+        e.preventDefault();
+        navigateInbox(+1);
+        return;
+      }
+      if (e.key === "k" || e.key === "K") {
+        e.preventDefault();
+        navigateInbox(-1);
+        return;
+      }
+      // 1..4 apply built-in template
+      if (/^[1-4]$/.test(e.key)) {
+        var idx = parseInt(e.key, 10) - 1;
+        var tpl = BUILTIN_TEMPLATES[idx];
+        if (tpl) { e.preventDefault(); fillBuiltInTemplate(tpl.key); }
+        return;
+      }
+    });
+  }
+
+  function navigateInbox(delta){
+    if (!inboxList || inboxList.length === 0) return;
+    // Use the visible (filtered) list as the navigation universe
+    var q = (inboxSearch || "").trim().toLowerCase();
+    var list = inboxList;
+    if (q) {
+      list = inboxList.filter(function(e){
+        var hay = [e.rma_subject, e.rma_fromaddress, e.rma_bodypreview,
+          (e.rma_Claim ? e.rma_Claim.rma_contactname  : ""),
+          (e.rma_Claim ? e.rma_Claim.rma_customername : ""),
+          inboxRowSender(e)].join(" \u00b7 ").toLowerCase();
+        return hay.indexOf(q) !== -1;
+      });
+    }
+    if (list.length === 0) return;
+    var cur = (inboxSelectedId || "").toLowerCase();
+    var idx = -1;
+    for (var i = 0; i < list.length; i++) {
+      if ((list[i].rma_emaillogid || "").toLowerCase() === cur) { idx = i; break; }
+    }
+    var nextIdx = (idx === -1)
+      ? (delta > 0 ? 0 : list.length - 1)
+      : Math.max(0, Math.min(list.length - 1, idx + delta));
+    var next = list[nextIdx];
+    if (next && next.rma_emaillogid) selectInboxEmail(next.rma_emaillogid);
+  }
+
+  function showKeyboardHelp(){
+    // Don't double-stack
+    if (document.getElementById("kbd-help-overlay")) return;
+    var overlay = document.createElement("div");
+    overlay.id = "kbd-help-overlay";
+    overlay.className = "kbd-help-overlay";
+    overlay.innerHTML =
+      '<div class="kbd-help-card" role="dialog" aria-modal="true" aria-labelledby="kbd-help-title">' +
+        '<h2 id="kbd-help-title"><span class="kbd-icon">RMA</span> Help and User Guide <span class="help-ver-pill">v2 \u2014 5/20</span></h2>' +
+        '<p class="subtitle">Everything you need to triage inbound RMA emails, link them to claims, and reply to customers \u2014 from first-time setup to daily use.</p>' +
+
+        // ---- 1. First-time setup ----
+        '<h3><span class="step-num">1</span> First-time setup</h3>' +
+        '<ol>' +
+          '<li>Open the <b>RMA Operations and Monitoring</b> app from your app launcher (or directly from <code>make.powerapps.com</code> &rarr; Apps).</li>' +
+          '<li>Click <b>Email Inbox</b> in the left navigation. This page is the queue you\u2019re looking at now.</li>' +
+          '<li>If the queue is empty, no inbound emails have been ingested yet. Customers can submit via the RMA Portal form, or you can manually create an <code>rma_emaillog</code> record from Advanced Find for testing.</li>' +
+          '<li>(Optional) An admin should configure a server-side <b>shared mailbox</b> in Dataverse so outbound replies are actually delivered. Without it, replies are saved as Draft email activities on the claim timeline.</li>' +
+        '</ol>' +
+        '<div class="callout info">\u2139\uFE0F You only need to do step 4 once per environment. Steps 1\u20133 are the start of every workday.</div>' +
+
+        // ---- 2. Layout overview ----
+        '<h3><span class="step-num">2</span> Layout overview</h3>' +
+        '<ul>' +
+          '<li><b>Top bar</b> \u2014 filter chips (Unprocessed / Today / All / Processed), layout picker, search, this Help button, and Refresh.</li>' +
+          '<li><b>Left list</b> \u2014 every email matching the current filter + search.</li>' +
+          '<li><b>Right reading pane</b> \u2014 the selected email plus the linked claim card, extracted data, claim actions, templates, reply box, and Send buttons.</li>' +
+        '</ul>' +
+        '<p><b>Layout picker</b> (top bar) lets you choose how the reading pane is split. Your choice is remembered next time you open the queue:</p>' +
+        '<ul>' +
+          '<li><b>Auto</b> (default) \u2014 stacks everything on narrow screens, splits into 2 columns at \u2265 1400 px, and into 3 columns at \u2265 1800 px.</li>' +
+          '<li><b>2 col</b> \u2014 Email + Claim Data on the left, Reply on the right. Activates at \u2265 1100 px.</li>' +
+          '<li><b>3 col</b> \u2014 Email \u2502 Claim Data \u2502 Response. Activates at \u2265 1200 px (otherwise stacks).</li>' +
+        '</ul>' +
+        '<p>In any multi-column mode, the Response column is <b>sticky</b> \u2014 it stays at the top while you scroll. Sections auto-size to their natural height (no internal scrollbars).</p>' +
+
+        // ---- 3. Triage workflow ----
+        '<h3><span class="step-num">3</span> The daily triage flow</h3>' +
+        '<ol>' +
+          '<li><b>Pick an email</b> from the left list (or press <kbd>J</kbd> to walk through one by one).</li>' +
+          '<li><b>Read the email body</b> and check the <b>Extracted</b> panel for auto-detected fields (model, serial, part number, etc.).</li>' +
+          '<li><b>If no claim is linked yet</b>, the big blue button reads <b>+ Create Claim</b>. Click it, confirm the fields in the modal, and Save. The claim is created and linked to this email.</li>' +
+          '<li><b>If a claim is already linked</b>, the big blue button reads <b>\uD83D\uDCE4 Send Reply \u2192</b>. Pick a template, edit, and send.</li>' +
+          '<li><b>Mark Done</b> if you want to close the email without replying. <b>Skip</b> moves to the next unprocessed item without changing this one.</li>' +
+        '</ol>' +
+
+        // ---- 4. Replying with templates ----
+        '<h3><span class="step-num">4</span> Replying with templates</h3>' +
+        '<p>The four built-in templates are numbered <kbd>1</kbd>\u2013<kbd>4</kbd>:</p>' +
+        '<ul>' +
+          '<li><b>1 \u2014 Acknowledge</b>: \u201cWe received your request, here\u2019s your claim number\u2026\u201d</li>' +
+          '<li><b>2 \u2014 Need Info</b>: ask the customer for missing details before opening a claim.</li>' +
+          '<li><b>3 \u2014 Resolved</b>: confirm the claim has been processed.</li>' +
+          '<li><b>4 \u2014 Denied</b>: respectfully decline with a reason.</li>' +
+        '</ul>' +
+        '<p>Custom templates configured by your admin appear below the four built-ins.</p>' +
+        '<p><b>Placeholders</b> like <code>{first_name}</code>, <code>{claim_number}</code>, <code>{customer_name}</code>, <code>{agent_name}</code> auto-fill from the linked claim and the signed-in user. Click <b>\uD83D\uDC41 Preview</b> to see exactly what the customer will receive \u2014 any placeholder that couldn\u2019t be filled in is highlighted in amber.</p>' +
+        '<div class="callout">\u26A0\uFE0F If no claim is linked yet, <code>{claim_number}</code> won\u2019t fill in. The Send button will warn you and recommend clicking <b>+ Create Claim</b> first.</div>' +
+
+        // ---- 5. Searching and filtering ----
+        '<h3><span class="step-num">5</span> Searching and filtering</h3>' +
+        '<ul>' +
+          '<li>Use the <b>filter chips</b> at the top to scope the list (Unprocessed is the default).</li>' +
+          '<li>Use the <b>search box</b> to narrow within the current filter. It matches subject, sender email, body preview, customer name and contact name. Press <kbd>/</kbd> to jump to it, <kbd>Esc</kbd> to clear.</li>' +
+          '<li>The \u201cN of M match\u201d hint shows how many results your search narrowed down.</li>' +
+        '</ul>' +
+
+        // ---- 6. Keyboard shortcuts ----
+        '<h3><span class="step-num">6</span> Keyboard shortcuts</h3>' +
+        '<table>' +
+          '<tr><td class="key"><kbd>J</kbd></td><td>Next email</td></tr>' +
+          '<tr><td class="key"><kbd>K</kbd></td><td>Previous email</td></tr>' +
+          '<tr><td class="key"><kbd>1</kbd> &ndash; <kbd>4</kbd></td><td>Apply built-in template (Acknowledge / Need Info / Resolved / Denied)</td></tr>' +
+          '<tr><td class="key"><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td><td>Send reply &amp; advance to next email</td></tr>' +
+          '<tr><td class="key"><kbd>/</kbd></td><td>Focus inbox search box</td></tr>' +
+          '<tr><td class="key"><kbd>Esc</kbd></td><td>Close this dialog or clear the search box</td></tr>' +
+          '<tr><td class="key"><kbd>?</kbd></td><td>Open this Help and User Guide</td></tr>' +
+        '</table>' +
+        '<div class="callout info">\u2139\uFE0F Shortcuts are ignored while you\u2019re typing in the reply box \u2014 except <kbd>Ctrl</kbd>+<kbd>Enter</kbd> which always sends.</div>' +
+
+        // ---- 7. Tips & FAQ ----
+        '<h3><span class="step-num">7</span> Tips &amp; FAQ</h3>' +
+        '<ul>' +
+          '<li><b>Where do emails come from?</b> The RMA portal form, customer replies to your outbound emails, and any process that creates <code>rma_emaillog</code> records.</li>' +
+          '<li><b>What does \u201cProcessed\u201d mean?</b> Either you sent a reply, or you clicked <b>Mark Done</b>. Processed items disappear from Unprocessed but stay in All / Processed for history.</li>' +
+          '<li><b>Why isn\u2019t the customer name showing?</b> The email might not be linked to a claim yet, or the claim doesn\u2019t have the customer fields populated. Open the claim from the card to fill them in.</li>' +
+          '<li><b>Can I undo a reply?</b> Once sent, no. But you can open the claim timeline and add a follow-up email activity.</li>' +
+          '<li><b>The reply went out as Draft \u2014 why?</b> Your environment doesn\u2019t have a server-side mailbox configured. An admin needs to set up <b>Email server profiles</b> in Dataverse.</li>' +
+          '<li><b>The Send button is greyed out / disabled.</b> Either the reply body or subject is empty, or there is no recipient email on the inbound message.</li>' +
+        '</ul>' +
+
+        '<div class="footer-row">' +
+          '<span class="hint">Press <kbd>?</kbd> any time to re-open this guide.</span>' +
+          '<button class="close-btn">Close</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", function(e){
+      if (e.target === overlay || (e.target.classList && e.target.classList.contains("close-btn"))) {
+        overlay.parentNode.removeChild(overlay);
+      }
+    });
+  }
+
+  // ---------- init ----------
+  function init(){
+    var mode = detectMode();
+    if (mode === "full") { initFullMode(); return; }
+
+    // ---- pane mode (existing behavior) ----
+    var id = getRecordId();
+    if (!id) {
+      // Form not ready yet — retry once after a tick
+      setTimeout(function(){
+        var id2 = getRecordId();
+        if (!id2) { showError("No email record context."); return; }
+        loadAll(id2);
+      }, 600);
+      return;
+    }
+    loadAll(id);
+  }
+
+  function loadAll(id){
+    lastRerunResult = null;  // clear stale re-run banner when navigating
+    Promise.all([loadRecord(id), loadTemplates(), loadQueue(id)])
+      .then(function(results){
+        currentRecord = results[0];
+        templates = (results[1] && results[1].value) || [];
+        // queue state already updated as side-effect inside loadQueue
+        pushToHistory(id);
+        render();
+      })
+      .catch(function(err){
+        console.error(err);
+        showError("Load failed: " + (err.message || err));
+      });
+  }
+
+  if (document.readyState === "complete" || document.readyState === "interactive") init();
+  else document.addEventListener("DOMContentLoaded", init);
+})();
+</script>
+</body>
+</html>

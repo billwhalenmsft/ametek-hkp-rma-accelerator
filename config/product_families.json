@@ -1,0 +1,39 @@
+{
+  "_description": "HKP iDEA motor product family map. SKU prefix → product family + warranty period in months.",
+  "_lastUpdated": "2026-05-05",
+  "_calibrationStatus": "STARTER — confirm warranty months with HKP customer (may differ by OEM contract)",
+
+  "skuPrefixes": [
+    {
+      "prefix": "iDEA-57",
+      "productFamily": "iDEA 57mm Linear Actuator",
+      "warrantyMonths": 24,
+      "engineerArea": "57mm Series",
+      "examples": ["iDEA-57-101", "iDEA-57-201"]
+    },
+    {
+      "prefix": "iDEA-43",
+      "productFamily": "iDEA 43mm Linear Actuator",
+      "warrantyMonths": 18,
+      "engineerArea": "Mid Frame Series",
+      "examples": ["iDEA-43-105"]
+    },
+    {
+      "prefix": "iDEA-35",
+      "productFamily": "iDEA 35mm Linear Actuator (Compact)",
+      "warrantyMonths": 18,
+      "engineerArea": "Mid Frame Series",
+      "examples": ["iDEA-35-080"]
+    },
+    {
+      "prefix": "iDEA-28",
+      "productFamily": "iDEA 28mm Linear Actuator",
+      "warrantyMonths": 12,
+      "engineerArea": "Compact Series",
+      "examples": ["iDEA-28-050"]
+    }
+  ],
+
+  "serialNumberPattern": "IDEA-{frameSize}-{year}-{sequence}",
+  "serialNumberRegex": "^IDEA-\\d{2}-\\d{4}-\\d{6}$"
+}

@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>HKP RMA — Prep & Demo Delivery Guide</title>
+<style>
+  :root {
+    --ms-blue: #0078D4; --ms-blue-dark: #005A9E;
+    --ametek: #003a70; --ametek-accent: #c8102e;
+    --bg: #f7f8fb; --paper: #ffffff; --border: #e3e7ee;
+    --text: #1a1f2c; --muted: #5b6577;
+    --good: #16a34a; --warn: #d97706; --bad: #dc2626;
+    --gold: #fff8dd; --gold-border: #d97706;
+    --info: #e6f3fb; --info-border: #0078D4;
+    --green-bg: #e8f7ed; --green-border: #16a34a;
+    --purple-bg: #f3edff; --purple-border: #7c3aed;
+    --hero1: #c8102e; --hero2: #0078d4; --hero3: #16a34a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.55; font-size: 14.5px; }
+
+  header.top {
+    background: linear-gradient(135deg, var(--ametek) 0%, var(--ms-blue) 100%);
+    color: white; padding: 24px 36px;
+  }
+  header.top h1 { margin: 0; font-size: 24px; font-weight: 600; }
+  header.top p  { margin: 4px 0 0; opacity: .92; font-size: 14px; }
+  header.top .meta { margin-top: 10px; font-size: 12px; opacity: .85; display: flex; gap: 16px; flex-wrap: wrap; }
+  header.top .meta b { color: #ffd84d; }
+
+  .actions {
+    background: white; border-bottom: 1px solid var(--border);
+    padding: 10px 36px; display: flex; gap: 8px;
+  }
+  .actions button {
+    background: var(--ms-blue); color: white; border: none; padding: 7px 14px;
+    border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 12.5px;
+  }
+  .actions button.secondary { background: white; border: 1px solid var(--border); color: var(--text); }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr) 320px;
+    gap: 0;
+    max-width: 1640px;
+    margin: 0 auto;
+  }
+
+  /* Left nav */
+  nav.left {
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
+    padding: 24px 18px; background: white; border-right: 1px solid var(--border);
+    font-size: 13px;
+  }
+  nav.left h3 { margin: 0 0 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+  nav.left a { display: block; padding: 6px 8px; color: var(--text); text-decoration: none; border-radius: 4px; margin-bottom: 2px; }
+  nav.left a:hover { background: #eef3fb; }
+  nav.left a.section { font-weight: 600; }
+  nav.left a.sub    { padding-left: 22px; font-size: 12.5px; color: var(--muted); }
+  nav.left .sep { border-top: 1px solid var(--border); margin: 14px 0 10px; }
+
+  /* Center content */
+  main { padding: 28px 40px 80px; min-width: 0; }
+  main h2 { font-size: 22px; margin: 36px 0 6px; padding-top: 16px; border-top: 3px solid var(--ms-blue); padding-top: 14px; color: var(--ametek); }
+  main h2:first-of-type { margin-top: 0; }
+  main h3 { font-size: 16px; margin: 22px 0 8px; color: var(--ms-blue-dark); }
+  main p { margin: 8px 0; }
+
+  .arc {
+    background: white; border: 1px solid var(--border); border-radius: 10px;
+    padding: 22px 26px; margin: 18px 0; box-shadow: 0 1px 3px rgba(0,0,0,.04);
+    page-break-inside: avoid;
+  }
+  .arc.hero1 { border-left: 6px solid var(--hero1); }
+  .arc.hero2 { border-left: 6px solid var(--hero2); }
+  .arc.hero3 { border-left: 6px solid var(--hero3); }
+
+  .say, .show, .roi, .frontier, .callout {
+    border-left: 4px solid; border-radius: 6px;
+    padding: 12px 16px; margin: 10px 0;
+  }
+  .say { background: var(--gold); border-color: var(--gold-border); font-style: italic; }
+  .say::before { content: "🎤 "; font-style: normal; }
+  .show { background: var(--info); border-color: var(--info-border); }
+  .show::before { content: "👀 "; }
+  .roi { background: var(--green-bg); border-color: var(--green-border); }
+  .roi::before { content: "💰 "; }
+  .frontier { background: var(--purple-bg); border-color: var(--purple-border); }
+  .frontier::before { content: "🚀 "; }
+  .callout.info  { background: var(--info); border-color: var(--info-border); }
+  .callout.warn  { background: #fef3c7; border-color: #d97706; }
+  .callout.good  { background: var(--green-bg); border-color: var(--green-border); }
+  .callout.danger{ background: #fee2e2; border-color: #dc2626; }
+
+  .click {
+    display: grid; grid-template-columns: 36px 1fr; gap: 14px;
+    padding: 14px 0; border-bottom: 1px dashed var(--border);
+  }
+  .click:last-of-type { border-bottom: none; }
+  .num-circle {
+    background: var(--ms-blue); color: white; width: 30px; height: 30px;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 13px;
+  }
+
+  .copyable {
+    background: #f0f4ff; border: 2px solid var(--info-border); border-radius: 8px;
+    padding: 12px 14px; margin: 10px 0; font-family: ui-monospace, "Consolas", monospace;
+    font-size: 13.5px; position: relative;
+  }
+  .copyable code { display: block; white-space: pre-wrap; word-break: break-word; }
+  .copyable .copy-btn {
+    position: absolute; top: 8px; right: 8px;
+    background: white; border: 1px solid var(--border); border-radius: 4px;
+    padding: 3px 9px; font-size: 11px; cursor: pointer;
+    font-family: "Segoe UI", system-ui, sans-serif;
+  }
+  .copyable .copy-btn:hover { background: #e6f3fb; }
+  .copyable .copy-btn.copied { background: #d4f7dd; border-color: #16a34a; color: #16a34a; }
+
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13.5px; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: #f3f6fb; color: var(--ametek); font-weight: 600; font-size: 12.5px; text-transform: uppercase; letter-spacing: .4px; }
+  tr:nth-child(even) td { background: #fafbfd; }
+
+  /* Right panel */
+  aside.right {
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
+    padding: 24px 18px; background: white; border-left: 1px solid var(--border);
+    font-size: 13px;
+  }
+  aside.right h3 { margin: 0 0 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+  aside.right .card {
+    background: #f7f8fb; border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; margin: 10px 0;
+  }
+  aside.right .card h4 { margin: 0 0 4px; font-size: 13px; color: var(--ametek); }
+  aside.right .card p  { margin: 2px 0; font-size: 12.5px; color: var(--muted); }
+  aside.right .pill {
+    display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-size: 11px; margin: 2px 4px 2px 0;
+  }
+  aside.right .pill.good { background: var(--green-bg); color: var(--good); }
+  aside.right .pill.warn { background: #fef3c7; color: #b45309; }
+  aside.right .pill.bad  { background: #fee2e2; color: #991b1b; }
+  aside.right .pill.info { background: var(--info); color: var(--info-border); }
+
+  /* Print */
+  @media print {
+    nav.left, aside.right, .actions { display: none; }
+    .layout { display: block; }
+    main { padding: 0 24px; }
+    body { background: white; font-size: 11pt; }
+    .arc, .copyable { page-break-inside: avoid; }
+    .copy-btn { display: none; }
+    header.top { background: var(--ametek) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>HKP RMA — Prep &amp; Demo Delivery Guide</h1>
+  <p>AMETEK Haydon Kerk Pittman · iDEA motor warranty &amp; RMA triage agent · Review call prep</p>
+  <div class="meta">
+    <span><b>For:</b> Tomorrow's customer review call</span>
+    <span><b>Duration:</b> 30 min agenda</span>
+    <span><b>Demo env:</b> <b>Copilot Studio + email</b> — live agent in Master CE Mfg, real Dataverse, real email</span>
+    <span><b>Phase:</b> Phase 1 — live email triage with HKP-tailored rules; some workflow paths narrated, not fully wired</span>
+  </div>
+</header>
+
+<div class="actions">
+  <button onclick="window.print()">🖨 Print / Save as PDF</button>
+  <button class="secondary" onclick="document.querySelectorAll('.arc').forEach(a=>a.scrollIntoView())">Scroll all arcs</button>
+  <button class="secondary" onclick="window.scrollTo(0,0)">Top</button>
+</div>
+
+<div class="layout">
+
+  <!-- LEFT NAV -->
+  <nav class="left">
+    <h3>Pre-call (15 min)</h3>
+    <a href="#mindset" class="section">1. Get your head locked in</a>
+    <a href="#what-we-built" class="section">2. What we actually built</a>
+    <a href="#environment-check" class="section">3. Environment check</a>
+    <a href="#dry-run" class="section">4. Dry-run the demo once</a>
+
+    <div class="sep"></div>
+    <h3>The call (30 min)</h3>
+    <a href="#agenda" class="section">5. 30-min agenda</a>
+    <a href="#openers" class="sub">— Openers + framing</a>
+    <a href="#listen" class="sub">— Discovery questions</a>
+    <a href="#demo" class="sub">— The demo</a>
+    <a href="#bridge" class="sub">— Reuse story</a>
+    <a href="#close" class="sub">— Close + next steps</a>
+
+    <div class="sep"></div>
+    <h3>Demo (5 scenarios, copy-paste-ready below)</h3>
+    <a href="#scenario-1" class="section">6a. Andersen / approve_replace</a>
+    <a href="#scenario-2" class="section">6b. Acme / water damage / reject</a>
+    <a href="#scenario-3" class="section">6c. Marvin / EMI / escalate</a>
+    <a href="#scenario-4" class="section">6d. Pella / out of warranty / reject</a>
+    <a href="#scenario-5" class="section">6e. Andersen / repeat claim / approval</a>
+    <a href="#fallbacks" class="section">7. Fallbacks if demo dies</a>
+
+    <div class="sep"></div>
+    <h3>Reference</h3>
+    <a href="#cheat-sheet" class="section">8. Talking-point cheat sheet</a>
+    <a href="#after-call" class="section">9. Capture from the call</a>
+    <a href="#next-phases" class="section">10. Phase 2 / 3 backlog</a>
+  </nav>
+
+  <!-- CENTER -->
+  <main>
+
+    <h2 id="mindset">1. Get your head locked in (5 min read)</h2>
+
+    <div class="arc">
+      <h3>The use case in one sentence</h3>
+      <p>AMETEK HKP runs warranty / RMA triage out of a shared inbox — engineers manually decide if each request is eligible, what to do (repair / replace / reject), and route it. We built 6 RAPP agents that do the triage in seconds, with a human in the loop on every decision.</p>
+
+      <h3>Why this customer, why now</h3>
+      <ul>
+        <li><b>Existing investment:</b> They already built a `WarrantyandClaimOperations` Dataverse solution (v1.0.0.14) with 29 entities + 10 Power Automate flows. They've put real work in. We add the agent layer on top — we don't replace anything.</li>
+        <li><b>Quantified pain:</b> "Several days" cycle time. Outcomes vary by who's on shift. They explicitly raised "scaling beyond one person's machine" as the gap.</li>
+        <li><b>Precedent:</b> AMETEK's SFMS division has another agent build in flight (Use Case 1). HKP is the second beachhead — different division, same playbook.</li>
+      </ul>
+
+      <h3>Three things you must remember on the call</h3>
+      <ol>
+        <li><b>Reuse story is the headline.</b> "We're not replacing your solution — we're extending it." 80% reuse / 20% net-new.</li>
+        <li><b>Human in the loop.</b> Every agent recommendation has a confidence + rationale. Engineer always has final say. Never say "automated" — say "agent-assisted."</li>
+        <li><b>Get them talking.</b> The agents we built use generic failure-mode keywords. The real value comes from <i>their</i> vocabulary. The call's job is to capture that.</li>
+      </ol>
+    </div>
+
+    <h2 id="what-we-built">2. What we actually built (so you can speak to it)</h2>
+
+    <div class="arc hero2">
+      <h3>Phase 1 — what's live and demo-able TODAY</h3>
+      <table>
+        <tr><th>Component</th><th>Status</th><th>What it does</th></tr>
+        <tr><td><b>HKP Warranty &amp; RMA Triage Agent</b> in Copilot Studio</td><td><span class="pill good">LIVE</span></td><td>Master CE Mfg env, published 5/5/2026. Receives email, triages, replies.</td></tr>
+        <tr><td>Email trigger on <code>rmarequest@D365DemoTSCE30330346.onmicrosoft.com</code></td><td><span class="pill good">LIVE</span></td><td>Polls every 1 min. Each new email kicks off the agent.</td></tr>
+        <tr><td>Extract Entities (AI Builder)</td><td><span class="pill good">LIVE</span></td><td>Pulls FirstName, LastName, Serial, Phone, Email, ProblemDescription from email body.</td></tr>
+        <tr><td>CreateWarrantyClaim Power Automate flow</td><td><span class="pill good">LIVE</span></td><td>Real Dataverse insert into <code>cr74e_warrantyclaim</code>, looks up <code>cr74e_productserial</code> server-side.</td></tr>
+        <tr><td>Office 365 Send email (V2) — info request + confirmation</td><td><span class="pill good">LIVE</span></td><td>Replies to customer in their Gmail / Outlook.</td></tr>
+        <tr><td>Microsoft Teams Post Card</td><td><span class="pill good">LIVE</span></td><td>Notifies AMETEK Warranty Management Team channel.</td></tr>
+        <tr><td>HKP-specific rules (4 tables, 50+ keywords, 7-step decision tree)</td><td><span class="pill good">LIVE</span></td><td>Embedded in agent instructions. LLM applies them to every claim.</td></tr>
+        <tr><td>5 seeded HKP serials in Dataverse</td><td><span class="pill good">LIVE</span></td><td><code>IDEA-57-2025-104872</code>, <code>IDEA-43-2022-087221</code>, <code>IDEA-35-2024-093311</code>, <code>IDEA-28-2025-201155</code>, <code>IDEA-57-2025-104880</code></td></tr>
+      </table>
+
+      <h3>Phase 1 — what's narrated but not fully wired (be honest)</h3>
+      <table>
+        <tr><th>Capability</th><th>What agent says</th><th>What actually happens</th></tr>
+        <tr><td>Engineer escalation routing</td><td>"Routed to Maya Patel (Mid Frame) via Teams DM"</td><td>No DM goes out yet. RouteEscalation flow is in Phase 2 backlog.</td></tr>
+        <tr><td>Manager approval card</td><td>"Triggering manager approval"</td><td>No approval flow runs yet. RequestManagerApproval flow is Phase 2.</td></tr>
+        <tr><td>Shipping label generation</td><td>"Shipping label attached"</td><td>No real label. SendShippingLabel flow is Phase 2.</td></tr>
+        <tr><td>Repeat-claim history</td><td>"3rd RMA from this OEM in 60 days"</td><td>LLM reads from email body — no real history query yet.</td></tr>
+      </table>
+      <p class="callout warn"><b>The pitch frame:</b> "We've validated the orchestration pattern with a real bot, real email, real Dataverse. The remaining workflow integrations are 4&ndash;6 weeks of straightforward Power Automate work — no agent rebuild needed."</p>
+
+      <h3>The HKP-tailored rules they'll see (the differentiator)</h3>
+      <ul>
+        <li><b>Product warranty terms</b> — 4 SKU prefixes (iDEA-57: 24mo, iDEA-43: 18mo, iDEA-35: 18mo, iDEA-28: 12mo)</li>
+        <li><b>OEM tier matrix</b> — Tier 1 (Andersen, Marvin) $7.5K cap / 2hr SLA, Tier 2 (Pella, Velux) $3.5K / 8hr, Tier 3 (distributors) $1K / 24hr</li>
+        <li><b>Failure-mode keyword library</b> — 18 misuse, 21 manufacturing-defect, 9 installation-environment</li>
+        <li><b>7-step eligibility decision tree</b> — first-match-wins, fully auditable</li>
+        <li><b>Disposition matrix</b> — 8 rows mapping eligibility + signal → disposition + base confidence</li>
+        <li><b>Confidence adjustments</b> — Tier 1 boost +0.05, repeat-claim penalty &minus;0.10, &lt;0.70 forces human review</li>
+        <li><b>Cost-tier guardrails</b> — replace cost &gt; tier cap forces manager approval</li>
+      </ul>
+
+      <p class="callout info"><b>The customer-editable angle:</b> All of this also lives as JSON in <code>customers/ametek/hkp_rma/config/</code>. Open <code>hkp_rules_cookbook.html</code> on screen during the call to make this tangible. "Your QA team edits a JSON file → 30 seconds later the agent's behavior changes in production. No code, no engineer in the loop."</p>
+    </div>
+
+    <h2 id="environment-check">3. Environment check (do this 30 min before the call)</h2>
+
+    <div class="arc">
+      <h3>Pre-flight checklist (open these tabs in this order)</h3>
+
+      <div class="click">
+        <div class="num-circle">1</div>
+        <div>
+          <b>Gmail</b> — sign in as <code>williamjaywhalen81@gmail.com</code>. This is the "customer" mailbox. The agent's replies will land here.
+        </div>
+      </div>
+
+      <div class="click">
+        <div class="num-circle">2</div>
+        <div>
+          <b>Outlook on the web</b> — sign in to demo tenant, open the <code>rmarequest@D365DemoTSCE30330346.onmicrosoft.com</code> shared mailbox. This is the "warranty inbox." Customer emails arrive here.
+        </div>
+      </div>
+
+      <div class="click">
+        <div class="num-circle">3</div>
+        <div>
+          <b>Copilot Studio</b> — <code>https://copilotstudio.microsoft.com</code> → Master CE Mfg env → <b>HKP Warranty &amp; RMA Triage Agent</b>. Click <b>Publish</b> if there's a yellow "Publish needed" indicator.
+        </div>
+      </div>
+
+      <div class="click">
+        <div class="num-circle">4</div>
+        <div>
+          <b>Power Automate run history</b> — <code>https://make.powerautomate.com/environments/a3140474-230b-ee2b-8dd8-605a8fe08913/flows</code>. Have this open as a backup view to show "the email landed and the trigger fired" if there's any doubt during the demo.
+        </div>
+      </div>
+
+      <div class="click">
+        <div class="num-circle">5</div>
+        <div>
+          <b>Demo scenario library</b> — open <code>customers/ametek/hkp_rma/ui/hkp_demo_scenarios.html</code> in a browser tab. This is your copy-paste source for the 5 scenarios.
+        </div>
+      </div>
+
+      <div class="click">
+        <div class="num-circle">6</div>
+        <div>
+          <b>Rules cookbook</b> — open <code>customers/ametek/hkp_rma/ui/hkp_rules_cookbook.html</code>. Use this to walk the customer through the rules during the "what's editable" part of the call.
+        </div>
+      </div>
+
+      <div class="click">
+        <div class="num-circle">7</div>
+        <div>
+          <b>Dataverse table</b> (optional) — Power Apps → Tables → <code>cr74e_warrantyclaim</code>. Useful to show "look, the agent created a real row."
+        </div>
+      </div>
+
+      <div class="callout warn">
+        <b>If the agent doesn't reply within 90 seconds:</b> the email trigger polls every 1 minute, so worst case takes ~2 min. If 3 min in nothing arrives, check the Power Automate run history first.
+      </div>
+    </div>
+
+    <h2 id="dry-run">4. Dry-run the demo once (15 min)</h2>
+
+    <div class="arc">
+      <p>Don't skip this. Run scenarios 1 and 4 once before the call so you've seen them work today.</p>
+
+      <h3>Speed-run script</h3>
+      <p>Run scenarios 1 and 4 once before the call. Copy these inline — don't switch tabs.</p>
+
+      <h4 style="margin-top:18px;">Dry-run #1 — Andersen lead screw (should APPROVE_REPLACE)</h4>
+      <ol>
+        <li>Gmail (signed in as <code>williamjaywhalen81@gmail.com</code>) → New email.</li>
+        <li><b>To:</b>
+          <div class="copyable"><code>rmarequest@D365DemoTSCE30330346.onmicrosoft.com</code></div>
+        </li>
+        <li><b>Subject:</b>
+          <div class="copyable"><code>Lead screw stripped after 6 months — RMA request</code></div>
+        </li>
+        <li><b>Body:</b>
+          <div class="copyable"><code>Hi,
+
+Customer reports premature lead-screw failure on iDEA 57mm actuator (serial IDEA-57-2025-104872) at 6 months in service. Unit installed in vertical sliding window, normal duty cycle. Photo attached shows clear thread shear. Original PO #PO-AND-2025-0814.
+
+Regards,
+Sarah
+Andersen Windows</code></div>
+        </li>
+        <li>Click Send. Wait 60–90 seconds.</li>
+        <li>Watch Gmail inbox — agent's reply should arrive acknowledging the claim with a claim number.</li>
+        <li>Open Outlook (rmarequest@) to confirm the inbound is visible there too.</li>
+        <li>Open Power Automate run history — confirm the trigger fired successfully.</li>
+      </ol>
+
+      <h4 style="margin-top:24px;">Dry-run #2 — Acme water damage (should REJECT)</h4>
+      <ol>
+        <li>Gmail → New email.</li>
+        <li><b>To:</b>
+          <div class="copyable"><code>rmarequest@D365DemoTSCE30330346.onmicrosoft.com</code></div>
+        </li>
+        <li><b>Subject:</b>
+          <div class="copyable"><code>Customer claim — iDEA-28 stopped working after install</code></div>
+        </li>
+        <li><b>Body:</b>
+          <div class="copyable"><code>Hello,
+
+One of our customers is reporting their iDEA 28mm actuator stopped working a month after install. They mentioned the install location got hit with significant water damage during a storm — there was standing water in the cabinet for several days before they found it. They want a replacement under warranty since the unit is under a year old.
+
+Serial: IDEA-28-2025-201155
+Original PO: PO-ACME-2025-2200
+Customer name: Bob Stevens
+
+Please advise on next steps.
+
+Thanks,
+Priya
+Acme Window Distribution</code></div>
+        </li>
+        <li>Click Send. Wait 60–90 seconds.</li>
+        <li>Reply should arrive with a polite rejection citing water damage / warranty exclusion + offer of paid-repair quote.</li>
+      </ol>
+
+      <h3>What to watch for in the dry run</h3>
+      <ul>
+        <li><b>Reply email tone:</b> read the agent's reply out loud. Is it professional, on-brand, accurate?</li>
+        <li><b>Claim record:</b> if you have time, check Dataverse <code>cr74e_warrantyclaim</code> — confirm a new row was created.</li>
+        <li><b>Run history details:</b> click into the Power Automate run, expand each step. You can show this live during the demo as proof the agent did the work.</li>
+      </ul>
+
+      <div class="callout good">
+        <b>If both scenarios work in dry run, you're solid for the call.</b> Scenarios 2, 3, 5 follow the same pattern — they may not all work perfectly but at least 1 + 4 are bulletproof.
+      </div>
+    </div>
+
+    <h2 id="agenda">5. The 30-min call agenda</h2>
+
+    <div class="arc">
+      <table>
+        <tr><th>Time</th><th>Block</th><th>Goal</th><th>Owner</th></tr>
+        <tr><td>0–5</td><td>Greet + frame</td><td>Set expectation: "show + capture"</td><td>YOU</td></tr>
+        <tr><td>5–10</td><td>Listen — their workflow</td><td>Get the real workflow + pain</td><td>THEM</td></tr>
+        <tr><td>10–15</td><td><b>Live demo #1</b> — Andersen approve</td><td>Show end-to-end email triage</td><td>YOU</td></tr>
+        <tr><td>15–18</td><td><b>Live demo #2</b> — Acme misuse reject</td><td>Show hard rules in action</td><td>YOU</td></tr>
+        <tr><td>18–22</td><td><b>Walk the rules cookbook</b></td><td>"Here's what your QA team edits"</td><td>YOU</td></tr>
+        <tr><td>22–26</td><td>Reuse + integration story + Phase 2/3</td><td>"Not replacing — extending"</td><td>YOU</td></tr>
+        <tr><td>26–30</td><td>Capture vocabulary + close</td><td>Failure modes, terminology, next checkpoint</td><td>BOTH</td></tr>
+      </table>
+      <div class="callout info">
+        <b>Why 2 live demos and not 5:</b> First and fourth scenarios are bulletproof and tell two opposite stories (auto-approve vs hard-reject). Don't burn time running all 5 — keep 2, 3, 5 in your back pocket if they want more or for follow-up call.
+      </div>
+    </div>
+
+    <h3 id="openers">5a. Openers + framing (0–5 min)</h3>
+
+    <div class="arc hero1">
+      <p class="say">Thanks for the time. The agenda I'd suggest: spend the first chunk hearing how RMA actually works at HKP today — what you do, not what the diagram says. Then I'll show you what we've built so far based on the conversations we've had. It's working but it's calibrated to generic failure modes — your call helps me sharpen it. Sound good?</p>
+
+      <div class="callout good">
+        <b>Why this opener works:</b> Frames you as listening first, demo second. Sets up that the demo is calibrate-able, so they're invested in giving you input rather than judging the demo as final.
+      </div>
+    </div>
+
+    <h3 id="listen">5b. Discovery questions — listen for 7 min (5–12)</h3>
+
+    <div class="arc">
+      <p><b>Ask 3-4 of these. Listen. Take notes in their words.</b></p>
+
+      <ol>
+        <li class="say">Walk me through the last RMA you handled — what did you actually do, click by click?</li>
+        <li class="say">How long does that whole process take, in minutes? And how much of that is data gathering vs deciding?</li>
+        <li class="say">If the engineer who handles RMAs is on PTO, what happens?</li>
+        <li class="say">What are the top 3 or 4 failure modes you see on iDEA motors? What words do customers actually use to describe them?</li>
+        <li class="say">When do you say no to an RMA? What's the most common reason for rejection?</li>
+        <li class="say">How does the customer find out where their RMA stands today?</li>
+        <li class="say">Do you have warranty terms written down somewhere? OEM-specific contract language?</li>
+        <li class="say">What's an RMA you've gotten in the last month where you weren't sure what to do?</li>
+      </ol>
+
+      <div class="callout info">
+        <b>Listening goal:</b> capture 5-10 verbatim phrases. Things like "we usually advance-replace if it's a Tier 1 OEM" or "we always make customers prove the cycle count first." Those phrases go straight into the agent instructions next session.
+      </div>
+    </div>
+
+    <h3 id="demo">5c. The demo (10–18 min) — live email triage</h3>
+
+    <div class="arc hero2">
+      <p class="say">Let me show you what we have running in your demo tenant. This is an actual Copilot Studio agent, with an email trigger watching a real shared mailbox in Microsoft 365. I'm going to send an email — you'll watch the agent triage it, write back to the customer, and create a real warranty claim record. Two scenarios, opposite ends of the rules.</p>
+
+      <p>Switch to your tab order: Gmail, then Outlook (rmarequest@), then Copilot Studio.</p>
+
+      <div class="callout info">
+        <b>Pacing tip:</b> While the email is in flight (60-90 sec), DON'T sit silent. That's your opportunity to <b>open the rules cookbook tab</b> and walk them through the rules for the scenario you just sent. By the time you're done explaining, the reply has landed.
+      </div>
+    </div>
+
+    <h2 id="scenario-1">6a. Demo Run 1 — Andersen / lead screw / IN warranty (5 min)</h2>
+
+    <div class="arc hero1">
+      <p class="say">First scenario — Tier 1 OEM, Andersen Windows, sends an RMA email to your warranty intake. The customer says a 57mm iDEA actuator's lead screw stripped after 6 months. Photo attached. They want it replaced. Watch what happens.</p>
+
+      <div class="click">
+        <div class="num-circle">1</div>
+        <div>
+          <b>In Gmail (signed in as williamjaywhalen81@gmail.com), compose new email.</b><br>
+          <b>To:</b>
+          <div class="copyable"><code>rmarequest@D365DemoTSCE30330346.onmicrosoft.com</code></div>
+          <b>Subject:</b>
+          <div class="copyable"><code>Lead screw stripped after 6 months — RMA request</code></div>
+          <b>Body:</b>
+          <div class="copyable"><code>Hi,
+
+Customer reports premature lead-screw failure on iDEA 57mm actuator (serial IDEA-57-2025-104872) at 6 months in service. Unit installed in vertical sliding window, normal duty cycle. Photo attached shows clear thread shear. Original PO #PO-AND-2025-0814.
+
+Regards,
+Sarah
+Andersen Windows</code></div>
+          Click <b>Send</b>.
+          <p class="say">Email goes to a shared inbox in their tenant — same place real RMAs would land in production.</p>
+        </div>
+      </div>
+
+      <div class="click">
+        <div class="num-circle">2</div>
+        <div>
+          <b>Switch to Outlook (rmarequest@)</b>. Hit refresh. Show the email arriving in the shared inbox.
+          <p class="say">Email landed. Now the agent has 60 seconds to pick it up — the trigger polls every minute.</p>
+        </div>
+      </div>
+
+      <div class="click">
+        <div class="num-circle">3</div>
+        <div>
+          <b>While waiting</b> — switch to <code>hkp_rules_cookbook.html</code>. Walk them through the OEM tier table:
+          <p class="say">While we wait — let me show you the rules driving this. Here's the OEM tier matrix. Andersen is Tier 1, so up to $7,500 auto-approve and 2-hour SLA. Pella's Tier 2. Distributors are Tier 3. Your QA team edits this JSON, and 30 seconds later the agent uses the new rules. No code change.</p>
+          <p class="say">Now scroll to the failure-mode keywords. See "lead screw" and "thread shear" in the manufacturing-defect list? That's why this scenario will come back as approve_replace — the agent matches those keywords with high confidence.</p>
+        </div>
+      </div>
+
+      <div class="click">
+        <div class="num-circle">4</div>
+        <div>
+          <b>Switch to Gmail</b>. Refresh. The agent's reply should be in the inbox.
+          <p class="say">Here's what came back. Notice — agent identified Sarah at Andersen, matched the serial, recognized "lead screw thread shear" as a manufacturing defect, confirmed in-warranty, and recommends replacement. Tier 1 OEM, in warranty, clear defect — confidence 0.97.</p>
+        </div>
+      </div>
+
+      <div class="click">
+        <div class="num-circle">5</div>
+        <div>
+          <b>Open Power Automate run history</b> (have it ready). Show the trigger run.
+          <p class="say">And here's the receipts — you can see in Power Automate that the trigger fired, called the agent, the agent extracted entities, looked up the serial in your <code>cr74e_productserial</code> table, created a claim record, sent the email back. Every step is logged. You can audit any decision the agent ever made.</p>
+        </div>
+      </div>
+
+      <div class="click">
+        <div class="num-circle">6</div>
+        <div>
+          <b>Optional</b> — open Dataverse <code>cr74e_warrantyclaim</code> table to show the new row.
+          <p class="say">And in Dataverse — there's the warranty claim record. Linked to the product serial, status set to "Approved - Replace," confidence and supporting facts captured.</p>
+        </div>
+      </div>
+
+      <div class="callout warn">
+        <b>If they ask "what about the shipping label?"</b> — be honest:
+        <p class="say">In the agent's reply it says "shipping label attached" — that's a Phase 2 item. Today we're proving the orchestration pattern with a real bot, real email, real Dataverse. The shipping-label flow itself is a 1-day Power Automate build that hooks into HKP's existing label generation. We deliberately separated "show the agent works" from "build all the workflow integrations" so you could see what's reusable from your existing solution before we wire the rest.</p>
+      </div>
+    </div>
+
+    <h2 id="scenario-2">6b. Demo Run 2 — Acme distributor / water damage / misuse (3 min)</h2>
+
+    <div class="arc hero3">
+      <p class="say">Second scenario — opposite case. Acme distributor, IN warranty unit, but the customer mentions standing water damage during a storm. Watch how the agent handles a misuse keyword that overrides everything else.</p>
+
+      <div class="click">
+        <div class="num-circle">1</div>
+        <div>
+          <b>In Gmail, new email.</b><br>
+          <b>To:</b>
+          <div class="copyable"><code>rmarequest@D365DemoTSCE30330346.onmicrosoft.com</code></div>
+          <b>Subject:</b>
+          <div class="copyable"><code>Customer claim — iDEA-28 stopped working after install</code></div>
+          <b>Body:</b>
+          <div class="copyable"><code>Hello,
+
+One of our customers is reporting their iDEA 28mm actuator stopped working a month after install. They mentioned the install location got hit with significant water damage during a storm — there was standing water in the cabinet for several days before they found it. They want a replacement under warranty since the unit is under a year old.
+
+Serial: IDEA-28-2025-201155
+Original PO: PO-ACME-2025-2200
+Customer name: Bob Stevens
+
+Please advise on next steps.
+
+Thanks,
+Priya
+Acme Window Distribution</code></div>
+          Click <b>Send</b>.
+        </div>
+      </div>
+
+      <div class="click">
+        <div class="num-circle">2</div>
+        <div>
+          <b>While waiting</b> — show the misuse keywords in the rules cookbook:
+          <p class="say">Look at the misuse list: water damage, submerged, flood, lightning, surge, tampered. These are HKP's warranty exclusions. If the customer's description contains any of these — doesn't matter if the unit is in warranty — the agent recommends reject. This is rule #1, and it overrides everything else.</p>
+        </div>
+      </div>
+
+      <div class="click">
+        <div class="num-circle">3</div>
+        <div>
+          <b>Switch to Gmail</b>. Show the rejection email.
+          <p class="say">There's the response. Polite but firm — coverage exclusion under HKP terms, water damage, offer of paid-repair quote. Confidence 0.95 because the keyword match is unambiguous.</p>
+          <p class="say">And critically — even though the unit is technically in warranty with 9 months remaining, the agent didn't approve it. Rules are deterministic. Same email + same rules = same answer, every time. That's the consistency layer that takes 18 months to onboard a new triage engineer.</p>
+        </div>
+      </div>
+
+      <div class="frontier">
+        Two scenarios, opposite outcomes, fully auditable. The pitch: <b>"This is your warranty playbook, encoded. Your team writes the rules, the agent applies them at machine speed, and an engineer reviews any close call. That's it."</b>
+      </div>
+    </div>
+
+    <h2 id="scenario-3">6c. (Backup) Marvin / EMI / engineer escalation</h2>
+
+    <div class="arc">
+      <p>Use only if they want a third scenario. Sends from Marvin domain, references VFD/EMI keywords, borderline warranty (60 days past). Expected: agent <i>says</i> it's escalating to Maya Patel for engineering review, but doesn't fire a real Teams DM yet (Phase 2).</p>
+      <p class="say">For ambiguous cases — let me show the escalation path. This one mentions VFD interference and is just past warranty. Watch — agent will say it's routing to Maya Patel, our Mid Frame engineer. In production a Teams DM goes to her with the evidence pack. Today the agent describes that handoff but the actual DM is a Phase 2 wire-up.</p>
+
+      <b>Subject:</b>
+      <div class="copyable"><code>Intermittent stalling on iDEA-35, possible drive interference</code></div>
+      <b>Body:</b>
+      <div class="copyable"><code>Hi team,
+
+We are seeing intermittent stalling on an iDEA 35mm Compact actuator, serial IDEA-35-2024-093311. Unit was installed two months ago in an industrial bay alongside a 75kW VFD running a neighbouring drive. We suspect EMI interference but need an engineer to confirm. The unit is just slightly out of warranty by our records but it's a known good install on a long-running Marvin program. PO PO-MAR-2024-0512.
+
+Could someone from your engineering team take a look at the diagnostic logs?
+
+Regards,
+James
+Marvin Holdings - Industrial Division</code></div>
+    </div>
+
+    <h2 id="scenario-4">6d. (Backup) Pella / out of warranty</h2>
+    <div class="arc">
+      <p>Use if they ask about handling out-of-warranty cases. Bearing failure on a 4-year-old unit. Expected: clean reject with offer of paid-repair quote.</p>
+      <p class="say">For out-of-warranty cases — unit is 720 days past warranty end, defect doesn't matter. Agent recommends polite reject with paid-quote offer. Confidence 0.92.</p>
+
+      <b>Subject:</b>
+      <div class="copyable"><code>RMA request - bearing failure on iDEA-43 unit</code></div>
+      <b>Body:</b>
+      <div class="copyable"><code>Hello,
+
+We have a customer with bearing failure on an iDEA 43mm actuator, serial IDEA-43-2022-087221. The unit has been in service for almost 4 years on a tilt-and-turn window installation. Customer is asking about warranty coverage. PO was PO-PEL-2022-1144.
+
+Thanks,
+Mike
+Pella Corporation</code></div>
+    </div>
+
+    <h2 id="scenario-5">6e. (Backup) Andersen repeat claim</h2>
+    <div class="arc">
+      <p>Use only if they ask "what if the same OEM keeps reporting the same issue?" Sends from Andersen, third RMA on iDEA-57 lead screw in 60 days. Expected: agent recognizes the repeat-claim language in the email body, applies confidence penalty, flags for manager approval as a quality signal.</p>
+      <p class="say">If you see a pattern — same SKU, same failure mode, same OEM, multiple times in a quarter — the agent flags it as a quality alert and routes to manager approval before the auto-approve fires. That's how you keep batch issues from turning into 50 RMAs before someone notices.</p>
+
+      <b>Subject:</b>
+      <div class="copyable"><code>Yet another iDEA-57 lead screw failure — RMA request</code></div>
+      <b>Body:</b>
+      <div class="copyable"><code>Hi all,
+
+We're seeing the same lead-screw failure pattern again on iDEA 57mm units. This is the third RMA we've filed this quarter for the same SKU and same failure mode (premature thread shear on lead screw). Serial IDEA-57-2025-104880, installed 4 months ago, normal duty cycle. PO PO-AND-2025-0820.
+
+Can you escalate this internally? We're starting to worry about a batch issue. Customer is asking for replacement plus we'd like a root-cause investigation.
+
+Regards,
+Sarah
+Andersen Windows OEM</code></div>
+    </div>
+
+    <h3 id="bridge">5d. The reuse / integration story (20–25 min)</h3>
+
+    <div class="arc hero2">
+      <p class="say">Now — the part that matters for ROI. None of this replaces what you've already built. Your `WarrantyandClaimOperations` solution has 29 entities, 10 Power Automate flows, an email-threading model. We're using all of it.</p>
+
+      <p>Open the architecture diagram in your head — or sketch it on paper. Three layers:</p>
+
+      <table>
+        <tr><th>Layer</th><th>What's there today</th><th>What we add</th></tr>
+        <tr><td>Intake</td><td>"When a new email arrives" flow + cr74e_warrantyclaim entity</td><td>Activate the flow + plug in the intake agent</td></tr>
+        <tr><td>Triage</td><td>Engineer manual review</td><td>The 6 agents (this is the only net-new layer)</td></tr>
+        <tr><td>Workflow</td><td>8 PA flows: routing, approval, shipping label, status notifications</td><td>Wire agent outputs to flow inputs</td></tr>
+      </table>
+
+      <p class="say">So roughly 80% reuse, 20% net-new. The new piece is the agent layer in the middle. Your engineers' clicks shrink from "manually decide everything" to "review the recommendation, click approve or override." Your existing flows still fire.</p>
+
+      <div class="roi">
+        <b>Rough ROI shape</b> (calibrate with their numbers tomorrow):<br>
+        If 100 RMAs/month × 25 min engineer time today × $X loaded cost — even 50% reduction is real. Don't quote dollars yet — get their RMA volume + minutes-per-RMA from the discovery questions, then come back with a number next call.
+      </div>
+    </div>
+
+    <h3 id="close">5e. Capture vocabulary + close (25–30 min)</h3>
+
+    <div class="arc">
+      <p class="say">Last bit — to make this real for HKP I need your words, not generic ones. Three quick captures:</p>
+
+      <ol>
+        <li><b>Failure modes:</b> "What are the 5–10 things you see most often on iDEA motors?" — capture verbatim</li>
+        <li><b>Disposition vocabulary:</b> "When you approve a replacement, what do you call that internally?" — capture so the agent matches</li>
+        <li><b>Engineer routing:</b> "Who covers 57mm? 43mm? 28mm? Mid-frame?" — replace mock names with real</li>
+      </ol>
+
+      <p class="say">Last question — when can we get on a follow-up to walk through this once it's calibrated to your terms? I'd want to come back in [1-2 weeks] with: the agents using your failure-mode vocabulary, working against [a few of] your real claims in Dataverse, and showing it inside the existing claim form instead of a tester. Does that work?</p>
+
+      <div class="callout good">
+        <b>What you want to leave with:</b> A second meeting on the calendar + their failure-mode list + their warranty terms doc + a verbal "yes, this is the right direction."
+      </div>
+    </div>
+
+    <h2 id="fallbacks">7. Fallbacks if the demo dies</h2>
+
+    <div class="arc">
+      <h3>If the email trigger doesn't fire within 2 minutes</h3>
+      <p>Don't sit silent waiting. Pivot to the rules cookbook walkthrough — that's substantive content that fills 5+ minutes easily and makes the "you control the rules" point even without a working live demo.</p>
+      <div class="copyable"><code>customers\ametek\hkp_rma\ui\hkp_rules_cookbook.html</code></div>
+
+      <h3>If the email arrives but no agent reply</h3>
+      <p>Open Power Automate run history live during the call. Show the trigger fired. Even if there's a downstream error, you can show "look — the trigger picked up the email, something happened in the agent" and pivot to the rules walk.</p>
+      <div class="copyable"><code>https://make.powerautomate.com/environments/a3140474-230b-ee2b-8dd8-605a8fe08913/flows</code></div>
+
+      <h3>If Copilot Studio is throwing errors</h3>
+      <p>Open the local 6-agent tester as a backup demo:</p>
+      <div class="copyable"><code>customers\ametek\hkp_rma\ui\hkp_rma_tester.html</code></div>
+      <p>Requires the function host running on localhost:7071. Different demo (per-agent walkthrough) but tells the same story.</p>
+
+      <h3>If everything dies and you have 25 minutes left</h3>
+      <p>Switch to <b>rules cookbook + scenario library walkthrough mode</b>. Show the cookbook end to end. Show the 5 demo scenarios in the library and walk what each <i>would</i> trigger. <b>The conversation is more valuable than a live demo.</b> Discovery + capture are what make the next demo useful — don't sacrifice that fighting live tech issues.</p>
+
+      <h3>If they want to see real Dataverse data they can edit themselves</h3>
+      <p>Power Apps → Tables → <code>cr74e_warrantyclaim</code> in their browser. Show the seeded HKP serials in <code>cr74e_productserial</code>:</p>
+      <ul>
+        <li><code>IDEA-57-2025-104872</code> — Andersen / in-warranty / approve_replace target</li>
+        <li><code>IDEA-43-2022-087221</code> — Pella / out-of-warranty / reject target</li>
+        <li><code>IDEA-35-2024-093311</code> — Marvin / borderline / escalate target</li>
+        <li><code>IDEA-28-2025-201155</code> — Acme distributor / misuse target</li>
+        <li><code>IDEA-57-2025-104880</code> — Andersen / repeat-claim target</li>
+      </ul>
+    </div>
+
+    <h2 id="cheat-sheet">8. Talking-point cheat sheet</h2>
+
+    <div class="arc">
+      <h3>Phrases to use</h3>
+      <ul>
+        <li>"Agent-assisted" (not "automated")</li>
+        <li>"Confidence + rationale" (every recommendation has both)</li>
+        <li>"Human in the loop" (engineer always reviews)</li>
+        <li>"Calibrated to your vocabulary" (we're flexible)</li>
+        <li>"Reuse what you've built" (their solution is the foundation)</li>
+        <li>"Faster + more consistent" (the two value levers)</li>
+      </ul>
+
+      <h3>Phrases to avoid</h3>
+      <ul>
+        <li>"Replace your engineers" — never. The pitch is amplification.</li>
+        <li>"AI will decide" — say "AI will recommend, engineer decides."</li>
+        <li>"Production-ready" — it's not yet. Say "demo working, calibration next."</li>
+        <li>"It learns" — without RAG/training pipeline that's a stretch. Say "uses historical context."</li>
+      </ul>
+
+      <h3>If they ask "is this Microsoft tech?"</h3>
+      <p class="say">Yes — the agents run on Azure, the orchestrator is Copilot Studio in your existing tenant, the data lives in your existing Dataverse. We're not bringing a new vendor. We're putting Microsoft's agent stack on top of the Microsoft solution you already have.</p>
+
+      <h3>If they ask "what about other AMETEK divisions?"</h3>
+      <p class="say">Same playbook. We've got SFMS in flight on a different agent set. The pattern of "extend the existing Dataverse + flows with an agent layer" works for any division that has a similar warranty/claim or proposal/quote workflow.</p>
+    </div>
+
+    <h2 id="after-call">9. Capture from the call (do this within 1 hour after)</h2>
+
+    <div class="arc">
+      <p>Email yourself a 5-bullet recap. Drop it in <code>customers/ametek/hkp_rma/transcripts/sanitized/</code> if NDA-safe, or your OneDrive otherwise.</p>
+
+      <h3>Capture template</h3>
+      <div class="copyable"><code># HKP RMA Review — [Date]
+Attendees: [...]
+
+## Real workflow they described
+- 
+
+## Pain points (verbatim quotes)
+- "..."
+
+## Failure modes they listed
+1. 
+2. 
+3. 
+
+## Disposition vocabulary
+- Approve repair: "..."
+- Reject: "..."
+- Escalate: "..."
+
+## Engineer routing (real names + areas)
+- 57mm: 
+- 43mm: 
+- 28mm: 
+
+## Warranty terms doc / OEM contract deviations
+- 
+
+## Volume + time data (for ROI)
+- RMAs/month: 
+- Min/RMA today: 
+- Top OEMs by volume: 
+
+## Decisions made on the call
+- [ ] 
+- [ ] 
+
+## Next-checkpoint date
+</code></div>
+
+      <p>That capture file feeds the next session — I'll read it, sharpen the agents, refresh the demo.</p>
+    </div>
+
+    <h2 id="next-phases">10. Phase 2 / 3 backlog (mention if asked)</h2>
+
+    <div class="arc">
+      <table>
+        <tr><th>Phase</th><th>What</th><th>Effort</th></tr>
+        <tr><td>2a</td><td>Load real `cr74e_warrantyclaim` records into Mfg Gold; agents query Dataverse not stub</td><td>~half day</td></tr>
+        <tr><td>2b</td><td>Wire agent outputs to existing PA flows (CreateWarrantyClaim, Send Shipping Label)</td><td>~1 day</td></tr>
+        <tr><td>2c</td><td>Transpile agents → Copilot Studio topics; live in their bot, not the tester</td><td>~1 day (we have the pattern from SFMS)</td></tr>
+        <tr><td>2d</td><td>Calibrate to HKP failure mode vocabulary from this call's notes</td><td>~2 hr</td></tr>
+        <tr><td>3a</td><td>Embed agent in their `cr74e_warrantyclaim` form (sidebar copilot)</td><td>~1 day</td></tr>
+        <tr><td>3b</td><td>Microsoft 365 Copilot integration — invoke from Outlook on email</td><td>~half day</td></tr>
+        <tr><td>3c</td><td>Acceptance test harness (~30 cases × 6 agents) running in CI</td><td>~1 day</td></tr>
+      </table>
+    </div>
+
+  </main>
+
+  <!-- RIGHT PANEL -->
+  <aside class="right">
+    <h3>Demo URLs</h3>
+
+    <div class="card">
+      <h4>Send TO</h4>
+      <p style="font-family:monospace;font-size:11.5px">rmarequest@D365DemoTSCE30330346.onmicrosoft.com</p>
+    </div>
+
+    <div class="card">
+      <h4>Send FROM</h4>
+      <p style="font-family:monospace;font-size:11.5px">williamjaywhalen81@gmail.com</p>
+    </div>
+
+    <div class="card">
+      <h4>Copilot Studio</h4>
+      <p style="font-family:monospace;font-size:11.5px">copilotstudio.microsoft.com</p>
+      <p>Master CE Mfg → HKP Warranty &amp; RMA Triage Agent</p>
+    </div>
+
+    <div class="card">
+      <h4>Power Automate run history</h4>
+      <p style="font-family:monospace;font-size:11px">make.powerautomate.com/environments/a3140474-230b-ee2b-8dd8-605a8fe08913/flows</p>
+    </div>
+
+    <h3>Open as tabs</h3>
+    <div class="card">
+      <h4>Demo scenarios (copy-paste source)</h4>
+      <p style="font-family:monospace;font-size:11px">hkp_demo_scenarios.html</p>
+    </div>
+    <div class="card">
+      <h4>Rules cookbook (talk-track)</h4>
+      <p style="font-family:monospace;font-size:11px">hkp_rules_cookbook.html</p>
+    </div>
+    <div class="card">
+      <h4>Local 6-agent tester (BACKUP)</h4>
+      <p style="font-family:monospace;font-size:11px">hkp_rma_tester.html</p>
+      <p style="font-size:11px">Needs func start on localhost:7071</p>
+    </div>
+
+    <h3>Demo scenarios</h3>
+    <div class="card">
+      <h4>1. Andersen / lead screw (PRIMARY)</h4>
+      <p>IDEA-57-2025-104872 · in warranty</p>
+      <p><span class="pill good">approve_replace 0.97</span></p>
+    </div>
+    <div class="card">
+      <h4>4. Acme / water damage (PRIMARY)</h4>
+      <p>IDEA-28-2025-201155 · misuse</p>
+      <p><span class="pill bad">reject 0.95</span></p>
+    </div>
+    <div class="card">
+      <h4>2. Pella / out of warranty (backup)</h4>
+      <p>IDEA-43-2022-087221 · 720d past</p>
+      <p><span class="pill bad">reject 0.92</span></p>
+    </div>
+    <div class="card">
+      <h4>3. Marvin / EMI / escalate (backup)</h4>
+      <p>IDEA-35-2024-093311 · borderline</p>
+      <p><span class="pill warn">escalate 0.45</span></p>
+    </div>
+    <div class="card">
+      <h4>5. Andersen / repeat (backup)</h4>
+      <p>IDEA-57-2025-104880 · 3rd in 60d</p>
+      <p><span class="pill warn">approve_replace + Manager Approval</span></p>
+    </div>
+
+    <h3>What's LIVE</h3>
+    <div class="card">
+      <p>✅ CS agent published</p>
+      <p>✅ Email trigger watching rmarequest@</p>
+      <p>✅ Extract entities from email</p>
+      <p>✅ CreateWarrantyClaim PA flow</p>
+      <p>✅ Reply email to customer</p>
+      <p>✅ Teams notification</p>
+      <p>✅ HKP rules in instructions</p>
+      <p>✅ 5 seeded product serials</p>
+    </div>
+
+    <h3>What's NOT yet wired (Phase 2)</h3>
+    <div class="card">
+      <p>🟡 Engineer Teams DM (RouteEscalation)</p>
+      <p>🟡 Manager approval card</p>
+      <p>🟡 Real shipping label generation</p>
+      <p>🟡 Repeat-claim history query</p>
+    </div>
+
+    <h3>Don't say</h3>
+    <div class="card">
+      <p>❌ "automated"</p>
+      <p>❌ "replace engineers"</p>
+      <p>❌ "production-ready"</p>
+      <p>❌ "it learns"</p>
+    </div>
+
+    <h3>Do say</h3>
+    <div class="card">
+      <p>✅ "agent-assisted"</p>
+      <p>✅ "human in the loop"</p>
+      <p>✅ "confidence + rationale"</p>
+      <p>✅ "calibrated to your vocabulary"</p>
+      <p>✅ "your QA team edits the JSON"</p>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+// Auto-inject copy buttons into .copyable blocks
+document.querySelectorAll('.copyable').forEach(el => {
+  if (el.querySelector('.copy-btn')) return;
+  const btn = document.createElement('button');
+  btn.className = 'copy-btn';
+  btn.textContent = '📋 Copy';
+  btn.onclick = () => {
+    const code = el.querySelector('code')?.textContent || '';
+    navigator.clipboard.writeText(code).then(() => {
+      btn.textContent = '✅ Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = '📋 Copy'; btn.classList.remove('copied'); }, 2000);
+    });
+  };
+  el.appendChild(btn);
+});
+</script>
+</body>
+</html>

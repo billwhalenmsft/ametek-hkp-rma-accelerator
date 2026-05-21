@@ -1,0 +1,107 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="x-ua-compatible" content="ie=edge" />
+<title>Email Body Preview</title>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #fafafa; font-family: 'Segoe UI', system-ui, sans-serif; color: #1f1f1f; }
+  .wrap { padding: 16px 22px; height: calc(100% - 32px); overflow: auto; }
+  .meta { display: flex; flex-wrap: wrap; gap: 12px 24px; padding: 10px 14px; background: #fff; border: 1px solid #ebebeb; border-radius: 6px; margin-bottom: 12px; font-size: 12px; }
+  .meta b { color: #444; font-weight: 600; }
+  .meta .label { color: #777; margin-right: 4px; }
+  .body-frame { background: #fff; border: 1px solid #ebebeb; border-radius: 6px; padding: 18px 22px; min-height: 280px; line-height: 1.5; font-size: 14px; }
+  .body-frame img { max-width: 100%; height: auto; }
+  .body-frame pre { white-space: pre-wrap; word-wrap: break-word; font-family: 'Cascadia Code', Consolas, monospace; font-size: 12.5px; }
+  .empty { color: #888; padding: 24px; text-align: center; font-style: italic; }
+  .err   { color: #b00020; padding: 16px; border: 1px solid #fbb; background: #fff5f5; border-radius: 6px; }
+  .pill  { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; background: #eef; color: #335; margin-left: 4px; }
+  .pill.proc { background: #e6f7ec; color: #1b6f3a; }
+  .pill.unproc { background: #fff3e0; color: #8a5a00; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="meta" class="meta" style="display:none"></div>
+  <div id="root" class="body-frame"><div class="empty">Loading email body…</div></div>
+</div>
+<script>
+(function(){
+  function getRecordId() {
+    try {
+      var p = window.parent;
+      if (p && p.Xrm && p.Xrm.Page && p.Xrm.Page.data && p.Xrm.Page.data.entity) {
+        var id = p.Xrm.Page.data.entity.getId();
+        if (id) return id.replace(/[{}]/g, "");
+      }
+    } catch(e){}
+    var qs = window.location.search;
+    var m = qs.match(/[?&]id=%7B?([0-9a-fA-F-]+)%7D?/);
+    if (m) return m[1];
+    return null;
+  }
+  function getOrgUrl() {
+    try {
+      var p = window.parent;
+      if (p && p.Xrm && p.Xrm.Utility && p.Xrm.Utility.getGlobalContext) {
+        return p.Xrm.Utility.getGlobalContext().getClientUrl();
+      }
+    } catch(e){}
+    return window.location.origin;
+  }
+  function fetchEmail(id, cb) {
+    var url = getOrgUrl() + "/api/data/v9.2/rma_emaillogs(" + id + ")?$select=rma_body,rma_bodypreview,rma_subject,rma_fromaddress,rma_recipient,rma_isprocessed,rma_direction,rma_receiveddate";
+    var req = new XMLHttpRequest();
+    req.open("GET", url, true);
+    req.setRequestHeader("Accept", "application/json");
+    req.setRequestHeader("OData-MaxVersion", "4.0");
+    req.setRequestHeader("OData-Version", "4.0");
+    req.setRequestHeader("Prefer", "odata.include-annotations=\"OData.Community.Display.V1.FormattedValue\"");
+    req.onreadystatechange = function(){
+      if (req.readyState === 4) {
+        if (req.status === 200) cb(null, JSON.parse(req.responseText));
+        else cb(req.status + " " + req.statusText, null);
+      }
+    };
+    req.send();
+  }
+  function looksLikeHtml(s) { return /<\s*(html|body|div|p|br|table|span|a|img)\b/i.test(s || ""); }
+  function escapeHtml(s) { return (s||"").replace(/[&<>"']/g, function(c){ return ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" })[c]; }); }
+  function render(rec) {
+    var meta = document.getElementById("meta");
+    var bits = [];
+    if (rec.rma_subject) bits.push('<span><span class="label">Subject</span><b>'+escapeHtml(rec.rma_subject)+'</b></span>');
+    if (rec.rma_fromaddress) bits.push('<span><span class="label">From</span><b>'+escapeHtml(rec.rma_fromaddress)+'</b></span>');
+    if (rec.rma_recipient) bits.push('<span><span class="label">To</span><b>'+escapeHtml(rec.rma_recipient)+'</b></span>');
+    if (rec["rma_direction@OData.Community.Display.V1.FormattedValue"]) bits.push('<span><span class="label">Direction</span><b>'+escapeHtml(rec["rma_direction@OData.Community.Display.V1.FormattedValue"])+'</b></span>');
+    if (rec["rma_receiveddate@OData.Community.Display.V1.FormattedValue"]) bits.push('<span><span class="label">Received</span><b>'+escapeHtml(rec["rma_receiveddate@OData.Community.Display.V1.FormattedValue"])+'</b></span>');
+    var procPill = rec.rma_isprocessed === true ? '<span class="pill proc">Processed</span>' : '<span class="pill unproc">Unprocessed</span>';
+    bits.push('<span>'+procPill+'</span>');
+    meta.innerHTML = bits.join('');
+    meta.style.display = "flex";
+
+    var root = document.getElementById("root");
+    var body = rec.rma_body || rec.rma_bodypreview || "";
+    if (!body) { root.innerHTML = '<div class="empty">No email body captured for this record.</div>'; return; }
+    if (looksLikeHtml(body)) {
+      // Render as HTML — strip <script> and on* attributes for safety
+      var clean = body.replace(/<\s*script\b[^>]*>[\s\S]*?<\s*\/\s*script\s*>/gi, "")
+                      .replace(/\son\w+\s*=\s*"[^"]*"/gi, "")
+                      .replace(/\son\w+\s*=\s*'[^']*'/gi, "");
+      root.innerHTML = clean;
+    } else {
+      root.innerHTML = '<pre>'+escapeHtml(body)+'</pre>';
+    }
+  }
+  function showError(msg) { document.getElementById("root").innerHTML = '<div class="err">'+escapeHtml(msg||"Could not load email.")+'</div>'; }
+  function init(){
+    var id = getRecordId();
+    if (!id) { setTimeout(function(){ var r=getRecordId(); if(!r) showError("No email record selected."); else fetchEmail(r,function(e,r2){ if(e) showError(e); else render(r2); }); }, 800); return; }
+    fetchEmail(id, function(err, rec){ if (err) showError(err); else render(rec); });
+  }
+  if (document.readyState === "complete" || document.readyState === "interactive") init();
+  else document.addEventListener("DOMContentLoaded", init);
+})();
+</script>
+</body>
+</html>

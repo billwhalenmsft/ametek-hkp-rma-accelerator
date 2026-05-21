@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RMA Monitor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f7f8fa;
+      --card: #ffffff;
+      --border: #e5e7eb;
+      --muted: #6b7280;
+      --foreground: #111827;
+      --primary: #0f172a;
+      --primary-fg: #ffffff;
+      --amber-50: #fffbeb;
+      --amber-100: #fef3c7;
+      --amber-500: #f59e0b;
+      --amber-700: #b45309;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b0f17;
+        --card: #111827;
+        --border: #1f2937;
+        --muted: #9ca3af;
+        --foreground: #f3f4f6;
+        --primary: #6366f1;
+        --primary-fg: #ffffff;
+      }
+    }
+    * { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    body { background: var(--bg); color: var(--foreground); margin: 0; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+    .kanban-col { background: var(--bg); border: 1px dashed var(--border); border-radius: 12px; min-height: 240px; transition: all 0.15s; }
+    .kanban-col.drop-active { border-color: var(--primary); border-style: solid; background: rgba(99,102,241,0.04); }
+    .claim-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; cursor: grab; transition: all 0.15s; }
+    .claim-card:hover { border-color: var(--primary); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+    .claim-card.sortable-drag { opacity: 0.4; }
+    .claim-card.sortable-ghost { background: rgba(99,102,241,0.08); border-style: dashed; }
+    .skeleton { background: linear-gradient(90deg, var(--border) 25%, var(--bg) 50%, var(--border) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 6px; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .status-dot { width: 8px; height: 8px; border-radius: 999px; display: inline-block; }
+    .toast {
+      position: fixed; bottom: 24px; right: 24px; background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      z-index: 1000; display: flex; align-items: center; gap: 10px; min-width: 240px;
+      animation: toastIn 0.2s ease-out;
+    }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+    .icon-btn { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); cursor: pointer; gap: 6px; font-size: 13px; font-weight: 500; transition: all 0.15s; }
+    .icon-btn:hover { border-color: var(--primary); }
+    .icon-btn.primary { background: var(--primary); color: var(--primary-fg); border-color: var(--primary); }
+    .input-search { width: 100%; height: 36px; padding: 0 12px 0 36px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); font-size: 13px; }
+    select.input-select { height: 36px; padding: 0 28px 0 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); font-size: 13px; appearance: none; cursor: pointer; min-width: 160px; }
+    /* Status palette to match CodeApp */
+    .s-new       { --s: #3b82f6; }
+    .s-triage    { --s: #f59e0b; }
+    .s-investig  { --s: #a855f7; }
+    .s-decision  { --s: #f97316; }
+    .s-closed    { --s: #10b981; }
+    /* Manager Inbox lane palette */
+    .l-pending   { --s: #f59e0b; }
+    .l-approved  { --s: #10b981; }
+    .l-denied    { --s: #ef4444; }
+    .l-customer  { --s: #8b5cf6; }
+    .inbox-lane { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; min-height: 140px; }
+    .inbox-lane.has-items { border-color: color-mix(in oklab, var(--s) 60%, transparent); box-shadow: 0 0 0 1px color-mix(in oklab, var(--s) 40%, transparent); }
+    .inbox-lane-header { display: flex; align-items: center; gap: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+    .inbox-card { background: var(--bg); border: 1px solid var(--border); border-left: 3px solid var(--s); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px; cursor: pointer; transition: all 0.12s; position: relative; min-height: 78px; display: flex; align-items: center; }
+    .inbox-card:hover { border-color: var(--s); transform: translateX(2px); }
+    .inbox-card.unread { background: color-mix(in oklab, var(--s) 8%, var(--card)); }
+    .inbox-card.unread::before { content: ''; position: absolute; top: 10px; right: 10px; width: 8px; height: 8px; border-radius: 50%; background: var(--s); }
+    .inbox-card .dismiss-btn { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border: none; background: transparent; color: var(--muted); cursor: pointer; border-radius: 4px; font-size: 14px; line-height: 1; padding: 0; opacity: 0; transition: opacity 0.12s; }
+    .inbox-card:hover .dismiss-btn { opacity: 1; }
+    .inbox-card .dismiss-btn:hover { background: var(--border); color: var(--foreground); }
+    .col-header-bar { height: 4px; border-radius: 999px; background: var(--s, var(--border)); }
+    .status-pill { background: color-mix(in oklab, var(--s, var(--muted)) 15%, transparent); color: var(--s, var(--muted)); border: 1px solid color-mix(in oklab, var(--s, var(--muted)) 35%, transparent); }
+  </style>
+</head>
+<body>
+  <div id="app" class="max-w-[1600px] mx-auto px-6 py-6">
+    <!-- Header -->
+    <header class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-3xl font-bold tracking-tight">RMA Monitor</h1>
+        <p class="text-sm" style="color: var(--muted)">Track and resolve return merchandise authorizations</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1 p-1 rounded-lg border" style="border-color: var(--border)">
+          <button id="view-pipeline" class="icon-btn" data-active="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            Pipeline
+          </button>
+          <button id="view-table" class="icon-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>
+            List
+          </button>
+        </div>
+        <button id="btn-refresh" class="icon-btn" title="Refresh">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>
+        </button>
+        <button id="btn-newclaim" class="icon-btn primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          New Claim
+        </button>
+      </div>
+    </header>
+
+    <!-- Filters -->
+    <div class="flex items-center gap-3 mb-6 flex-wrap">
+      <div class="relative flex-1 max-w-sm">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--muted)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="search" class="input-search" placeholder="Search claims, parts, customers..." />
+      </div>
+      <select id="filter-plant" class="input-select"><option value="all">All Plants</option></select>
+      <select id="filter-status" class="input-select"><option value="all">All Statuses</option></select>
+      <div class="ml-auto text-xs" style="color: var(--muted)">
+        <span id="conn-status">⏳ Loading…</span>
+      </div>
+    </div>
+
+    <!-- Awaiting Action banner (only shows if any) -->
+    <div id="awaiting-action" class="hidden mb-6 card p-4" style="border-color: var(--amber-500); background: var(--amber-50)">
+      <div class="flex items-center gap-2 mb-3">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--amber-700)"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <h3 class="font-semibold" style="color: var(--amber-700)">Awaiting Your Action</h3>
+        <span id="awaiting-count" class="badge ml-auto" style="background: var(--amber-100); color: var(--amber-700)">0 items</span>
+      </div>
+      <div id="awaiting-list" class="space-y-2"></div>
+    </div>
+
+    <!-- Manager Inbox: 4 swim lanes for items needing attention -->
+    <section id="manager-inbox" class="mb-6">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+          <h2 class="text-lg font-semibold">Manager Inbox</h2>
+          <span id="inbox-total" class="badge" style="background: var(--border); color: var(--muted)">0</span>
+        </div>
+        <button id="btn-clear-all" class="icon-btn text-xs" title="Dismiss all read items">Clear read</button>
+      </div>
+      <div id="inbox-lanes" class="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"></div>
+    </section>
+
+    <!-- KPI cards -->
+    <div class="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+      <div class="card p-5">
+        <div class="flex items-center justify-between mb-2"><span class="text-xs font-medium" style="color: var(--muted)">Open Claims</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--muted)"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div class="text-2xl font-bold" id="kpi-open">—</div>
+        <div class="text-xs" style="color: var(--muted)" id="kpi-open-sub">Across — locations</div>
+      </div>
+      <div class="card p-5">
+        <div class="flex items-center justify-between mb-2"><span class="text-xs font-medium" style="color: var(--muted)">Avg Age (days)</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--muted)"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="text-2xl font-bold" id="kpi-age">—</div>
+        <div class="text-xs" style="color: var(--muted)" id="kpi-age-sub">Open claims</div>
+      </div>
+      <div class="card p-5">
+        <div class="flex items-center justify-between mb-2"><span class="text-xs font-medium" style="color: var(--muted)">Approval Needed</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--muted)"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="text-2xl font-bold" id="kpi-approval">—</div>
+        <div class="text-xs" style="color: var(--muted)" id="kpi-approval-sub">In Decision stage</div>
+      </div>
+      <div class="card p-5">
+        <div class="flex items-center justify-between mb-2"><span class="text-xs font-medium" style="color: var(--muted)">Closed This Week</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--muted)"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="text-2xl font-bold" id="kpi-closed">—</div>
+        <div class="text-xs" style="color: var(--muted)" id="kpi-closed-sub">Last 7 days</div>
+      </div>
+    </div>
+
+    <!-- Pipeline view -->
+    <section id="pipeline-view" class="space-y-4">
+      <div class="text-xs flex items-center gap-2" style="color: var(--muted)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9V5a2 2 0 0 1 2-2h2"/><path d="M5 15v4a2 2 0 0 0 2 2h2"/><path d="M19 9V5a2 2 0 0 0-2-2h-2"/><path d="M19 15v4a2 2 0 0 1-2 2h-2"/></svg>
+        Drag a card to a different column to change its status.
+      </div>
+      <div id="kanban" class="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5"></div>
+    </section>
+
+    <!-- Table view -->
+    <section id="table-view" class="hidden card overflow-hidden">
+      <table class="w-full text-sm">
+        <thead style="background: var(--bg)"><tr>
+          <th class="text-left p-3 font-medium" style="color: var(--muted)">Claim #</th>
+          <th class="text-left p-3 font-medium" style="color: var(--muted)">Customer</th>
+          <th class="text-left p-3 font-medium" style="color: var(--muted)">Part</th>
+          <th class="text-left p-3 font-medium" style="color: var(--muted)">Plant</th>
+          <th class="text-left p-3 font-medium" style="color: var(--muted)">Status</th>
+          <th class="text-right p-3 font-medium" style="color: var(--muted)">Credit</th>
+          <th class="text-right p-3 font-medium" style="color: var(--muted)">Age</th>
+        </tr></thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </section>
+  </div>
+
+  <div id="toast-host"></div>
+
+  <script>
+  // ============================================================
+  // RMA Monitor Dashboard - Single-file HTML web resource
+  // Embeds in MDA via web resource, also runs standalone for preview
+  // ============================================================
+
+  const STATUS = [
+    { value: 100000000, key: 'new',       label: 'New',           cls: 's-new' },
+    { value: 100000001, key: 'triage',    label: 'Triage',        cls: 's-triage' },
+    { value: 100000002, key: 'investig',  label: 'Investigation', cls: 's-investig' },
+    { value: 100000003, key: 'decision',  label: 'Decision',      cls: 's-decision' },
+    { value: 100000004, key: 'closed',    label: 'Closed',        cls: 's-closed' },
+  ];
+  const STATUS_BY_VALUE = Object.fromEntries(STATUS.map(s => [s.value, s]));
+
+  const APPROVAL_THRESHOLD = 500; // $ above which approval is required (matches RMA flow)
+
+  // ----- Mock data for standalone preview -----
+  const MOCK_CLAIMS = [
+    { rma_claimid: 'm1', rma_claimnumber: 'RMA-2026-0042', rma_customername: 'Acme Industrial', rma_partnumber: 'HKP-PMP-200', rma_assignedplantname: 'Plant A — Houston', rma_status: 100000000, rma_creditamount: 1850, createdon: daysAgo(2), rma_haspendingresponse: false },
+    { rma_claimid: 'm2', rma_claimnumber: 'RMA-2026-0043', rma_customername: 'Northwind Mfg', rma_partnumber: 'HKP-VLV-50',  rma_assignedplantname: 'Plant A — Houston', rma_status: 100000001, rma_creditamount: 425,  createdon: daysAgo(4), rma_haspendingresponse: true  },
+    { rma_claimid: 'm3', rma_claimnumber: 'RMA-2026-0044', rma_customername: 'Globex Refining', rma_partnumber: 'HKP-PMP-200', rma_assignedplantname: 'Plant B — Tulsa',   rma_status: 100000002, rma_creditamount: 6200, createdon: daysAgo(7), rma_haspendingresponse: false },
+    { rma_claimid: 'm4', rma_claimnumber: 'RMA-2026-0045', rma_customername: 'Acme Industrial', rma_partnumber: 'HKP-VLV-50',  rma_assignedplantname: 'Plant B — Tulsa',   rma_status: 100000003, rma_creditamount: 3400, createdon: daysAgo(11), rma_haspendingresponse: false },
+    { rma_claimid: 'm5', rma_claimnumber: 'RMA-2026-0046', rma_customername: 'Initech Energy',   rma_partnumber: 'HKP-SNS-12',  rma_assignedplantname: 'Plant A — Houston', rma_status: 100000003, rma_creditamount: 850,  createdon: daysAgo(14), rma_haspendingresponse: true  },
+    { rma_claimid: 'm6', rma_claimnumber: 'RMA-2026-0040', rma_customername: 'Globex Refining', rma_partnumber: 'HKP-PMP-200', rma_assignedplantname: 'Plant B — Tulsa',   rma_status: 100000004, rma_creditamount: 4900, createdon: daysAgo(18), rma_closeddate: daysAgo(2), rma_haspendingresponse: false },
+    { rma_claimid: 'm7', rma_claimnumber: 'RMA-2026-0038', rma_customername: 'Northwind Mfg',  rma_partnumber: 'HKP-SNS-12',  rma_assignedplantname: 'Plant A — Houston', rma_status: 100000004, rma_creditamount: 220,  createdon: daysAgo(21), rma_closeddate: daysAgo(5), rma_haspendingresponse: false },
+  ];
+  function daysAgo(n) { const d = new Date(); d.setDate(d.getDate()-n); return d.toISOString(); }
+
+  // ----- State -----
+  const state = {
+    claims: [],
+    plants: [],
+    approvals: [],
+    dismissed: new Set(JSON.parse(localStorage.getItem('rma_inbox_dismissed') || '[]')),
+    seen: new Set(JSON.parse(localStorage.getItem('rma_inbox_seen') || '[]')),
+    filterSearch: '',
+    filterPlant: 'all',
+    filterStatus: 'all',
+    view: 'pipeline',
+    isMda: false,
+  };
+
+  function persistDismissed() { localStorage.setItem('rma_inbox_dismissed', JSON.stringify([...state.dismissed])); }
+  function persistSeen() { localStorage.setItem('rma_inbox_seen', JSON.stringify([...state.seen])); }
+
+  // ----- Detect MDA context -----
+  function getXrm() {
+    try { if (window.parent && window.parent.Xrm) return window.parent.Xrm; } catch {}
+    try { if (window.Xrm) return window.Xrm; } catch {}
+    return null;
+  }
+
+  // ----- Data layer -----
+  async function fetchClaims() {
+    const Xrm = getXrm();
+    if (Xrm && Xrm.WebApi) {
+      // Note: rma_assignedplant is a Lookup. Select the GUID field (_rma_assignedplant_value)
+      // and read the formatted display name from the OData annotation. Xrm.WebApi automatically
+      // includes formatted-value annotations on _<lookup>_value properties.
+      const res = await Xrm.WebApi.retrieveMultipleRecords('rma_claim',
+        '?$select=rma_claimid,rma_claimnumber,rma_customername,rma_partnumber,_rma_assignedplant_value,rma_status,rma_creditamount,rma_haspendingresponse,createdon,rma_closeddate,statecode&$orderby=createdon desc&$top=200');
+      // Normalize: synthesize rma_assignedplantname from the lookup's formatted value
+      return (res.entities || []).map(e => {
+        const fmt = e['_rma_assignedplant_value@OData.Community.Display.V1.FormattedValue'];
+        return Object.assign({}, e, { rma_assignedplantname: fmt || e.rma_assignedplantname || null });
+      });
+    }
+    return MOCK_CLAIMS;
+  }
+
+  async function fetchPlants() {
+    const Xrm = getXrm();
+    if (Xrm && Xrm.WebApi) {
+      try {
+        const res = await Xrm.WebApi.retrieveMultipleRecords('rma_plant', '?$select=rma_plantid,rma_name&$top=50');
+        return res.entities.map(p => ({ id: p.rma_plantid, name: p.rma_name }));
+      } catch { return []; }
+    }
+    // Derive plants from mock claims
+    const set = new Set(MOCK_CLAIMS.map(c => c.rma_assignedplantname).filter(Boolean));
+    return [...set].map(n => ({ id: n, name: n }));
+  }
+
+  async function fetchApprovals() {
+    const Xrm = getXrm();
+    if (!Xrm || !Xrm.WebApi) return [];
+    try {
+      // Last 30 days of approval records (covers pending + recent responses)
+      const cutoff = new Date(Date.now() - 30*86400000).toISOString();
+      const q = `?$select=rma_approvalrecordid,rma_name,rma_approvalstatus,rma_approvaldate,rma_requestedamount,rma_approvername,createdon,_rma_claim_value&$filter=createdon ge ${cutoff}&$orderby=createdon desc&$top=100`;
+      const res = await Xrm.WebApi.retrieveMultipleRecords('rma_approvalrecord', q);
+      return res.entities || [];
+    } catch (e) { console.warn('fetchApprovals failed:', e); return []; }
+  }
+
+  async function updateClaimStatus(claimId, newStatusValue) {
+    const Xrm = getXrm();
+    if (Xrm && Xrm.WebApi) {
+      await Xrm.WebApi.updateRecord('rma_claim', claimId, { rma_status: newStatusValue });
+      return true;
+    }
+    // Mock update
+    const c = state.claims.find(c => c.rma_claimid === claimId);
+    if (c) c.rma_status = newStatusValue;
+    return true;
+  }
+
+  function openClaim(claimId) {
+    const Xrm = getXrm();
+    if (Xrm && Xrm.Navigation) {
+      Xrm.Navigation.openForm({ entityName: 'rma_claim', entityId: claimId });
+    } else {
+      toast(`Open claim ${claimId} (standalone preview — no navigation)`, 'info');
+    }
+  }
+
+  function newClaim() {
+    const Xrm = getXrm();
+    if (Xrm && Xrm.Navigation) {
+      Xrm.Navigation.openForm({ entityName: 'rma_claim' });
+    } else {
+      toast('New claim form (standalone preview)', 'info');
+    }
+  }
+
+  // ----- Selectors -----
+  function getFilteredClaims() {
+    const q = state.filterSearch.toLowerCase();
+    return state.claims.filter(c => {
+      if (state.filterPlant !== 'all' && c.rma_assignedplantname !== state.filterPlant) return false;
+      if (state.filterStatus !== 'all' && String(c.rma_status) !== state.filterStatus) return false;
+      if (q && !((c.rma_claimnumber||'').toLowerCase().includes(q) ||
+                 (c.rma_customername||'').toLowerCase().includes(q) ||
+                 (c.rma_partnumber||'').toLowerCase().includes(q))) return false;
+      return true;
+    });
+  }
+  function ageDays(c) { return Math.floor((Date.now() - new Date(c.createdon).getTime()) / 86400000); }
+  function fmtMoney(n) { return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n||0); }
+
+  // ----- Render -----
+  function render() {
+    const filtered = getFilteredClaims();
+    renderKpis(filtered);
+    renderManagerInbox();
+    renderAwaiting(filtered);
+    if (state.view === 'pipeline') {
+      document.getElementById('pipeline-view').classList.remove('hidden');
+      document.getElementById('table-view').classList.add('hidden');
+      renderKanban(filtered);
+    } else {
+      document.getElementById('pipeline-view').classList.add('hidden');
+      document.getElementById('table-view').classList.remove('hidden');
+      renderTable(filtered);
+    }
+  }
+
+  function renderKpis(filtered) {
+    const open = filtered.filter(c => c.rma_status !== 100000004);
+    const plants = new Set(open.map(c => c.rma_assignedplantname).filter(Boolean));
+    const avgAge = open.length ? Math.round(open.reduce((s,c) => s+ageDays(c), 0) / open.length) : 0;
+    const approvals = filtered.filter(c => c.rma_status === 100000003 && (c.rma_creditamount||0) > APPROVAL_THRESHOLD);
+    const weekAgo = Date.now() - 7*86400000;
+    const closedThisWeek = state.claims.filter(c => c.rma_closeddate && new Date(c.rma_closeddate).getTime() >= weekAgo);
+    document.getElementById('kpi-open').textContent = open.length;
+    document.getElementById('kpi-open-sub').textContent = `Across ${plants.size} location${plants.size===1?'':'s'}`;
+    document.getElementById('kpi-age').textContent = avgAge;
+    document.getElementById('kpi-approval').textContent = approvals.length;
+    document.getElementById('kpi-approval-sub').textContent = `> ${fmtMoney(APPROVAL_THRESHOLD)} credit`;
+    document.getElementById('kpi-closed').textContent = closedThisWeek.length;
+  }
+
+  function renderAwaiting(filtered) {
+    // Hidden — replaced by Manager Inbox lanes
+    const wrap = document.getElementById('awaiting-action');
+    if (wrap) wrap.classList.add('hidden');
+  }
+
+  // ===== Manager Inbox: 4 swim lanes =====
+  // Lanes:
+  //   pending  — approval record status = Pending (manager waiting on approver)
+  //   approved — approval record status = Approved AND not dismissed
+  //   denied   — approval record status = Denied AND not dismissed
+  //   customer — claim has rma_haspendingresponse=true AND not closed
+  function buildInboxLanes() {
+    const claimById = Object.fromEntries(state.claims.map(c => [c.rma_claimid, c]));
+    const lanes = { pending: [], approved: [], denied: [], customer: [] };
+    state.approvals.forEach(a => {
+      if (state.dismissed.has(a.rma_approvalrecordid)) return;
+      const claim = claimById[a._rma_claim_value];
+      const item = { kind: 'approval', a, claim, id: a.rma_approvalrecordid, claimId: a._rma_claim_value };
+      if (a.rma_approvalstatus === 100000000 || a.rma_approvalstatus == null) lanes.pending.push(item);
+      else if (a.rma_approvalstatus === 100000001) lanes.approved.push(item);
+      else if (a.rma_approvalstatus === 100000002) lanes.denied.push(item);
+    });
+    // De-dup pending: keep most-recent pending per claim
+    const seenClaims = new Set();
+    lanes.pending = lanes.pending.filter(i => { if (seenClaims.has(i.claimId)) return false; seenClaims.add(i.claimId); return true; });
+    // Customer responses: from claims with rma_haspendingresponse
+    state.claims.forEach(c => {
+      if (!c.rma_haspendingresponse) return;
+      if (c.rma_status === 100000004) return;
+      const dkey = 'cust:' + c.rma_claimid;
+      if (state.dismissed.has(dkey)) return;
+      lanes.customer.push({ kind: 'customer', claim: c, id: dkey, claimId: c.rma_claimid });
+    });
+    return lanes;
+  }
+
+  function renderManagerInbox() {
+    const lanes = buildInboxLanes();
+    const total = lanes.pending.length + lanes.approved.length + lanes.denied.length + lanes.customer.length;
+    const totalEl = document.getElementById('inbox-total');
+    if (totalEl) totalEl.textContent = total;
+
+    const defs = [
+      { key: 'pending',  cls: 'l-pending',  label: 'Awaiting Approval',  sub: 'Manager response pending', icon: '⏳', items: lanes.pending },
+      { key: 'approved', cls: 'l-approved', label: 'Approval — Granted', sub: 'Action: notify customer',   icon: '✅', items: lanes.approved },
+      { key: 'denied',   cls: 'l-denied',   label: 'Approval — Denied',  sub: 'Action: notify customer',   icon: '❌', items: lanes.denied },
+      { key: 'customer', cls: 'l-customer', label: 'Waiting for Customer',sub: 'Response received',         icon: '✉️', items: lanes.customer },
+    ];
+
+    const wrap = document.getElementById('inbox-lanes');
+    if (!wrap) return;
+    wrap.innerHTML = defs.map(d => {
+      const hasItems = d.items.length > 0;
+      const body = hasItems
+        ? d.items.map(i => inboxCardHtml(i, d.key)).join('')
+        : `<div class="text-xs text-center py-6" style="color: var(--muted)">All clear</div>`;
+      return `
+        <div class="inbox-lane ${d.cls} ${hasItems ? 'has-items' : ''}">
+          <div class="inbox-lane-header">
+            <span style="font-size: 16px">${d.icon}</span>
+            <div class="flex-1">
+              <div class="text-sm font-semibold" style="color: var(--s)">${d.label}</div>
+              <div class="text-[11px]" style="color: var(--muted)">${d.sub}</div>
+            </div>
+            <span class="badge" style="background: color-mix(in oklab, var(--s) 15%, transparent); color: var(--s)">${d.items.length}</span>
+          </div>
+          <div>${body}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function inboxCardHtml(item, laneKey) {
+    const c = item.claim;
+    const claimNum = c ? (c.rma_claimnumber || '—') : '—';
+    const cust = c ? (c.rma_customername || '—') : '—';
+    const isUnread = !state.seen.has(item.id);
+    let metaLine = '';
+    if (item.kind === 'approval') {
+      const amt = item.a.rma_requestedamount;
+      const amtStr = amt != null ? fmtMoney(amt) : '';
+      const when = item.a.rma_approvaldate || item.a.createdon;
+      const whenStr = when ? new Date(when).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+      const approver = item.a.rma_approvername || '';
+      if (laneKey === 'pending') {
+        metaLine = `${amtStr} · requested ${esc(whenStr)}`;
+      } else {
+        const who = approver ? esc(approver) : '';
+        metaLine = `${amtStr}${who ? ' · ' + who : ''} · ${esc(whenStr)}`;
+      }
+    } else if (item.kind === 'customer') {
+      metaLine = 'Reply received · open to review';
+    }
+    const dismissable = laneKey === 'approved' || laneKey === 'denied' || laneKey === 'customer';
+    return `
+      <div class="inbox-card ${isUnread ? 'unread' : ''}" data-itemid="${esc(item.id)}" data-claimid="${esc(item.claimId||'')}">
+        <div class="flex-1 min-w-0 pr-5">
+          <div class="text-xs font-mono font-semibold" style="color: var(--muted)">${esc(claimNum)}</div>
+          <div class="text-sm font-semibold truncate">${esc(cust)}</div>
+          <div class="text-xs mt-0.5 truncate" style="color: var(--muted)">${metaLine || '&nbsp;'}</div>
+        </div>
+        ${dismissable ? `<button class="dismiss-btn" data-dismiss="${esc(item.id)}" title="Dismiss">✕</button>` : ''}
+      </div>
+    `;
+  }
+
+  // Event delegation for inbox cards (click to open, X to dismiss)
+  document.addEventListener('click', function(e) {
+    const dismiss = e.target.closest('[data-dismiss]');
+    if (dismiss) {
+      e.stopPropagation();
+      const id = dismiss.getAttribute('data-dismiss');
+      state.dismissed.add(id);
+      persistDismissed();
+      renderManagerInbox();
+      return;
+    }
+    const card = e.target.closest('.inbox-card');
+    if (card) {
+      const itemId = card.getAttribute('data-itemid');
+      const claimId = card.getAttribute('data-claimid');
+      if (itemId) { state.seen.add(itemId); persistSeen(); }
+      if (claimId) openClaim(claimId);
+      return;
+    }
+    if (e.target.id === 'btn-clear-all') {
+      // Dismiss everything currently marked seen
+      state.seen.forEach(id => state.dismissed.add(id));
+      persistDismissed();
+      renderManagerInbox();
+      toast('Cleared read items from inbox', 'info');
+    }
+  });
+
+  function renderKanban(filtered) {
+    const grouped = Object.fromEntries(STATUS.map(s => [s.value, []]));
+    filtered.forEach(c => { if (grouped[c.rma_status]) grouped[c.rma_status].push(c); });
+    const html = STATUS.map(s => `
+      <div class="${s.cls}" data-status="${s.value}">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <span class="status-dot" style="background: var(--s)"></span>
+            <span class="text-sm font-semibold">${s.label}</span>
+            <span class="text-xs" style="color: var(--muted)">${grouped[s.value].length}</span>
+          </div>
+        </div>
+        <div class="col-header-bar mb-3"></div>
+        <div class="kanban-col p-3 space-y-2" data-col="${s.value}">
+          ${grouped[s.value].map(c => claimCardHtml(c)).join('') || `<div class="text-xs text-center py-6" style="color: var(--muted)">No claims</div>`}
+        </div>
+      </div>
+    `).join('');
+    document.getElementById('kanban').innerHTML = html;
+    initSortables();
+  }
+
+  function claimCardHtml(c) {
+    const age = ageDays(c);
+    const ageColor = age > 14 ? '#dc2626' : age > 7 ? '#f59e0b' : 'var(--muted)';
+    const needsApproval = c.rma_status === 100000003 && (c.rma_creditamount||0) > APPROVAL_THRESHOLD;
+    return `
+      <div class="claim-card" data-id="${c.rma_claimid}" data-status="${c.rma_status}" onclick="if(!event.target.closest('.no-drag-click')) openClaim('${c.rma_claimid}')">
+        <div class="flex items-start justify-between mb-1.5">
+          <div class="text-xs font-mono font-semibold" style="color: var(--muted)">${esc(c.rma_claimnumber||'—')}</div>
+          ${needsApproval ? `<span class="badge no-drag-click" style="background: rgba(249,115,22,0.12); color: #c2410c">⚠ Approval</span>` : ''}
+        </div>
+        <div class="font-semibold text-sm mb-0.5">${esc(c.rma_customername||'—')}</div>
+        <div class="text-xs mb-2" style="color: var(--muted)">${esc(c.rma_partnumber||'—')}</div>
+        <div class="flex items-center justify-between text-xs">
+          <span style="color: var(--muted)">${esc(c.rma_assignedplantname||'Unassigned')}</span>
+          <span class="font-semibold">${fmtMoney(c.rma_creditamount)}</span>
+        </div>
+        <div class="flex items-center justify-between text-[11px] mt-2 pt-2 border-t" style="border-color: var(--border)">
+          <span style="color: ${ageColor}">${age}d old</span>
+          ${c.rma_haspendingresponse ? `<span class="badge" style="background: var(--amber-100); color: var(--amber-700)">📩 Response</span>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderTable(filtered) {
+    document.getElementById('table-body').innerHTML = filtered.map(c => {
+      const s = STATUS_BY_VALUE[c.rma_status] || { label: '?', cls: '' };
+      return `
+      <tr class="hover:bg-gray-50/40 cursor-pointer" style="border-top: 1px solid var(--border)" onclick="openClaim('${c.rma_claimid}')">
+        <td class="p-3 font-mono text-xs">${esc(c.rma_claimnumber||'—')}</td>
+        <td class="p-3">${esc(c.rma_customername||'—')}</td>
+        <td class="p-3" style="color: var(--muted)">${esc(c.rma_partnumber||'—')}</td>
+        <td class="p-3" style="color: var(--muted)">${esc(c.rma_assignedplantname||'—')}</td>
+        <td class="p-3"><span class="badge status-pill ${s.cls}">${s.label}</span></td>
+        <td class="p-3 text-right font-semibold">${fmtMoney(c.rma_creditamount)}</td>
+        <td class="p-3 text-right text-xs" style="color: var(--muted)">${ageDays(c)}d</td>
+      </tr>`;
+    }).join('') || `<tr><td colspan="7" class="p-8 text-center" style="color: var(--muted)">No claims match your filters</td></tr>`;
+  }
+
+  // ----- Drag-n-drop -----
+  function initSortables() {
+    document.querySelectorAll('.kanban-col').forEach(col => {
+      new Sortable(col, {
+        group: 'rma-claims',
+        animation: 180,
+        ghostClass: 'sortable-ghost',
+        dragClass: 'sortable-drag',
+        onAdd: async (evt) => {
+          const cardEl = evt.item;
+          const claimId = cardEl.dataset.id;
+          const oldStatus = parseInt(cardEl.dataset.status, 10);
+          const newStatus = parseInt(evt.to.dataset.col, 10);
+          if (oldStatus === newStatus) return;
+          // optimistic UI
+          cardEl.dataset.status = newStatus;
+          const c = state.claims.find(x => x.rma_claimid === claimId);
+          if (c) c.rma_status = newStatus;
+          try {
+            await updateClaimStatus(claimId, newStatus);
+            toast(`Moved ${c?.rma_claimnumber||claimId} → ${STATUS_BY_VALUE[newStatus].label}`, 'success');
+            renderKpis(getFilteredClaims());
+            renderAwaiting(getFilteredClaims());
+          } catch (e) {
+            console.error(e);
+            toast(`Failed to update status. Reverting.`, 'error');
+            // revert
+            if (c) c.rma_status = oldStatus;
+            render();
+          }
+        },
+      });
+    });
+  }
+
+  // ----- Filters wiring -----
+  function wireUi() {
+    document.getElementById('search').addEventListener('input', e => { state.filterSearch = e.target.value; render(); });
+    document.getElementById('filter-plant').addEventListener('change', e => { state.filterPlant = e.target.value; render(); });
+    document.getElementById('filter-status').addEventListener('change', e => { state.filterStatus = e.target.value; render(); });
+    document.getElementById('view-pipeline').addEventListener('click', () => { state.view='pipeline'; render(); });
+    document.getElementById('view-table').addEventListener('click', () => { state.view='table'; render(); });
+    document.getElementById('btn-refresh').addEventListener('click', () => loadAll(true));
+    document.getElementById('btn-newclaim').addEventListener('click', newClaim);
+  }
+
+  function populateFilters() {
+    const plantSel = document.getElementById('filter-plant');
+    const plantNames = [...new Set(state.claims.map(c => c.rma_assignedplantname).filter(Boolean))].sort();
+    plantSel.innerHTML = `<option value="all">All Plants</option>` + plantNames.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+    const statusSel = document.getElementById('filter-status');
+    statusSel.innerHTML = `<option value="all">All Statuses</option>` + STATUS.map(s => `<option value="${s.value}">${s.label}</option>`).join('');
+  }
+
+  // ----- Toast -----
+  function toast(msg, kind='info') {
+    const host = document.getElementById('toast-host');
+    const t = document.createElement('div');
+    t.className = 'toast';
+    const colors = { success: '#10b981', error: '#dc2626', info: '#3b82f6' };
+    t.innerHTML = `<span class="status-dot" style="background:${colors[kind]||colors.info};width:10px;height:10px"></span><span>${esc(msg)}</span>`;
+    host.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+  }
+  function esc(s) { return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+
+  // ----- Bootstrap -----
+  async function loadAll(showRefreshToast=false) {
+    try {
+      document.getElementById('conn-status').textContent = '⏳ Loading…';
+      const [claims, approvals] = await Promise.all([fetchClaims(), fetchApprovals()]);
+      state.claims = claims;
+      state.approvals = approvals;
+      populateFilters();
+      const Xrm = getXrm();
+      const mode = Xrm ? `🟢 Live (${state.claims.length} claims · ${state.approvals.length} approvals)` : `🟡 Preview mode (mock data)`;
+      document.getElementById('conn-status').textContent = mode;
+      render();
+      if (showRefreshToast) toast(`Refreshed ${state.claims.length} claims, ${state.approvals.length} approvals`, 'success');
+    } catch (e) {
+      console.error(e);
+      document.getElementById('conn-status').textContent = '🔴 Failed to load';
+      toast('Failed to load claims', 'error');
+    }
+  }
+
+  wireUi();
+  loadAll();
+  </script>
+</body>
+</html>

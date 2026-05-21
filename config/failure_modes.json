@@ -1,0 +1,84 @@
+{
+  "_description": "HKP-specific failure mode keyword library. Used by step 7 of the agent's instructions block (eligibility rules engine).",
+  "_lastUpdated": "2026-05-05",
+  "_calibrationStatus": "CALIBRATED — updated 2026-05-11 from real Roche Diagnostics form submission (13x LC1574W-05-B25 stepper motors, Penang batch P2550/P2608)",
+
+  "manufacturingDefect": {
+    "description": "Keywords that indicate a likely manufacturing defect (eligible if in warranty)",
+    "keywords": [
+      "lead screw",
+      "thread shear",
+      "thread stripped",
+      "stripped thread",
+      "bearing noise",
+      "bearing wear",
+      "bearing failure",
+      "encoder",
+      "encoder drift",
+      "stepper",
+      "stator",
+      "rotor",
+      "winding",
+      "manufacturing defect",
+      "premature failure",
+      "premature wear",
+      "failed at",
+      "seized",
+      "shorted",
+      "open circuit",
+      "intermittent operation",
+      "does not move",
+      "motor does not move",
+      "no movement",
+      "will not run",
+      "low force",
+      "insufficient force",
+      "low torque",
+      "pull function failed",
+      "cannot pull",
+      "motor move with low force",
+      "fails to perform pull",
+      "batch defect",
+      "multiple units"
+    ]
+  },
+
+  "misuse": {
+    "description": "Keywords that indicate misuse / warranty exclusion (always ineligible)",
+    "keywords": [
+      "dropped",
+      "impact",
+      "fell",
+      "water damage",
+      "submerged",
+      "flood",
+      "lightning",
+      "power surge",
+      "overvoltage",
+      "exceeded rated",
+      "wrong voltage",
+      "tampered",
+      "modified",
+      "disassembled",
+      "burned",
+      "fire damage",
+      "smoke damage",
+      "physical damage"
+    ]
+  },
+
+  "installationEnvironment": {
+    "description": "Keywords that suggest the failure may be caused by installation conditions (escalate to engineer for review)",
+    "keywords": [
+      "vfd",
+      "variable frequency drive",
+      "emi",
+      "electrical noise",
+      "neighbouring drive",
+      "shielding",
+      "ground loop",
+      "noisy environment",
+      "interference"
+    ]
+  }
+}

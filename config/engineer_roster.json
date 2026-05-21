@@ -1,0 +1,36 @@
+{
+  "_description": "Quality Engineer roster. The RouteEscalation action picks an engineer based on product family.",
+  "_lastUpdated": "2026-05-05",
+  "_calibrationStatus": "MOCK — replace with real HKP QE names + Teams IDs after customer call",
+
+  "engineersByArea": [
+    {
+      "engineerArea": "57mm Series",
+      "name": "Sarah Chen",
+      "role": "Senior QE - 57mm Series",
+      "email": "sarah.chen@ametek.com",
+      "teamsUserId": "TODO: real AAD user GUID"
+    },
+    {
+      "engineerArea": "Mid Frame Series",
+      "name": "Marcus Rivera",
+      "role": "QE - Mid Frame Series",
+      "email": "marcus.rivera@ametek.com",
+      "teamsUserId": "TODO: real AAD user GUID"
+    },
+    {
+      "engineerArea": "Compact Series",
+      "name": "Priya Patel",
+      "role": "QE - Compact Series",
+      "email": "priya.patel@ametek.com",
+      "teamsUserId": "TODO: real AAD user GUID"
+    }
+  ],
+
+  "fallback": {
+    "name": "RMA Triage Pool",
+    "role": "RMA Quality",
+    "email": "rma-triage@ametek.com",
+    "teamsChannel": "AMETEK Warranty Management Team / HKP Warranty Triage"
+  }
+}

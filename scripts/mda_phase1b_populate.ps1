@@ -1,0 +1,218 @@
+<#
+.SYNOPSIS
+    Populate the existing "RMA Operations" Model-Driven app with sitemap,
+    entities, and views.
+
+    App ID: 50c3f3eb-194e-f111-bec6-000d3a5aed87
+#>
+
+[CmdletBinding()]
+param(
+    [string]$OrgUrl = "https://org6feab6b5.crm.dynamics.com",
+    [string]$AppId  = "50c3f3eb-194e-f111-bec6-000d3a5aed87"
+)
+
+$ErrorActionPreference = "Stop"
+
+$token = (az account get-access-token --resource $OrgUrl --query accessToken -o tsv)
+if (-not $token) { throw "No token. az login first." }
+
+$hdrBase = @{
+    Authorization      = "Bearer $token"
+    Accept             = "application/json"
+    "OData-Version"    = "4.0"
+    "OData-MaxVersion" = "4.0"
+    "MSCRM.SolutionUniqueName" = "RMAReturnsMonitor"
+}
+
+function Invoke-Dv {
+    param([string]$Method, [string]$Path, $Body = $null, [switch]$ReturnHeaders, [int]$MaxRetries = 5)
+    $url = "$OrgUrl/api/data/v9.2/$Path"
+    $h = $hdrBase.Clone()
+    if ($Method -in @('PATCH','DELETE')) { $h['If-Match'] = '*' }
+    if ($Body) { $h['Content-Type'] = 'application/json; charset=utf-8' }
+    $params = @{ Uri = $url; Method = $Method; Headers = $h }
+    if ($Body) { $params.Body = ($Body | ConvertTo-Json -Depth 20 -Compress) }
+    $attempt = 0
+    while ($true) {
+        $attempt++
+        try {
+            if ($ReturnHeaders) { return Invoke-WebRequest @params -ErrorAction Stop }
+            return Invoke-RestMethod @params -ErrorAction Stop
+        } catch {
+            $msg = $_.Exception.Message
+            if ($_.ErrorDetails.Message) { $msg = $_.ErrorDetails.Message }
+            if ($msg -match '0x80072324|Too many concurrent|429|503' -and $attempt -lt $MaxRetries) {
+                $wait = [Math]::Min(60, [Math]::Pow(2, $attempt) * 2)
+                Write-Host "    [throttled] retry $attempt after ${wait}s..." -ForegroundColor DarkYellow
+                Start-Sleep -Seconds $wait
+                continue
+            }
+            throw "API [$Method $Path]: $msg"
+        }
+    }
+}
+
+Write-Host "`n=== Populating RMA Operations app ===" -ForegroundColor Cyan
+Write-Host "App ID: $AppId`n" -ForegroundColor DarkGray
+
+# Verify the app exists
+try {
+    $app = Invoke-Dv -Method GET -Path "appmodules($AppId)?`$select=name,uniquename,clienttype"
+    Write-Host "  Found: $($app.name) ($($app.uniquename))" -ForegroundColor Green
+} catch {
+    throw "App $AppId not found: $($_.Exception.Message)"
+}
+
+# ============================================================================
+# STEP 1: Build sitemap XML
+# ============================================================================
+Write-Host "`nStep 1: Build + apply sitemap" -ForegroundColor Cyan
+
+$sitemapXml = @"
+<SiteMap IntroducedVersion="9.0.0.0">
+  <Area Id="rma_operations_area" ShowGroups="true" Title="RMA Operations">
+    <Group Id="rma_group_work" Title="Daily Work">
+      <SubArea Id="rma_subarea_claims" Entity="rma_claim" Title="RMA Claims">
+        <Privilege Entity="rma_claim" Privilege="Read" />
+      </SubArea>
+      <SubArea Id="rma_subarea_inbox" Entity="rma_emaillog" Title="Email Inbox">
+        <Privilege Entity="rma_emaillog" Privilege="Read" />
+      </SubArea>
+      <SubArea Id="rma_subarea_approvals" Entity="rma_approvalrecord" Title="Approvals">
+        <Privilege Entity="rma_approvalrecord" Privilege="Read" />
+      </SubArea>
+    </Group>
+    <Group Id="rma_group_admin" Title="Configuration">
+      <SubArea Id="rma_subarea_plants" Entity="rma_plant" Title="Plants">
+        <Privilege Entity="rma_plant" Privilege="Read" />
+      </SubArea>
+      <SubArea Id="rma_subarea_routing" Entity="rma_routingrule" Title="Routing Rules">
+        <Privilege Entity="rma_routingrule" Privilege="Read" />
+      </SubArea>
+      <SubArea Id="rma_subarea_approvers" Entity="rma_plantapprover" Title="Plant Approvers">
+        <Privilege Entity="rma_plantapprover" Privilege="Read" />
+      </SubArea>
+      <SubArea Id="rma_subarea_templates" Entity="rma_emailtemplate" Title="Email Templates">
+        <Privilege Entity="rma_emailtemplate" Privilege="Read" />
+      </SubArea>
+      <SubArea Id="rma_subarea_signatures" Entity="rma_emailsignature" Title="Email Signatures">
+        <Privilege Entity="rma_emailsignature" Privilege="Read" />
+      </SubArea>
+    </Group>
+    <Group Id="rma_group_audit" Title="History">
+      <SubArea Id="rma_subarea_claimnotes" Entity="rma_claimnote" Title="Claim Notes">
+        <Privilege Entity="rma_claimnote" Privilege="Read" />
+      </SubArea>
+      <SubArea Id="rma_subarea_approvalhistory" Entity="rma_approvalhistory" Title="Approval History">
+        <Privilege Entity="rma_approvalhistory" Privilege="Read" />
+      </SubArea>
+    </Group>
+  </Area>
+</SiteMap>
+"@
+
+# Find sitemap linked to this appmodule
+# appmodule has a related sitemap via appmodule_sitemap relationship.
+# Easiest path: PATCH the sitemapxml directly on the SiteMap record that
+# Maker UI auto-created for this app.
+
+$smByApp = Invoke-Dv -Method GET -Path "appmodules($AppId)?`$select=appmoduleid,name&`$expand=appmodule_sitemap(`$select=sitemapid,sitemapname,sitemapnameunique)"
+$existingSitemap = $smByApp.appmodule_sitemap
+$sitemapId = $null
+if ($existingSitemap -and $existingSitemap.Count -gt 0) {
+    $sitemapId = $existingSitemap[0].sitemapid
+    Write-Host "  [found] existing sitemap $($existingSitemap[0].sitemapnameunique) -> $sitemapId" -ForegroundColor DarkGray
+    Write-Host "  [patch] updating sitemapxml..." -ForegroundColor Cyan
+    Invoke-Dv -Method PATCH -Path "sitemaps($sitemapId)" -Body @{ sitemapxml = $sitemapXml } | Out-Null
+    Write-Host "  [ok]    sitemap XML updated" -ForegroundColor Green
+} else {
+    Write-Host "  [info]  no existing sitemap linked, creating new..." -ForegroundColor Yellow
+    $body = @{
+        sitemapname       = "RMA Operations"
+        sitemapnameunique = "rma_operations_sitemap_" + [Guid]::NewGuid().ToString().Substring(0,8)
+        sitemapxml        = $sitemapXml
+    }
+    $resp = Invoke-Dv -Method POST -Path "sitemaps" -Body $body -ReturnHeaders
+    $loc = $resp.Headers['OData-EntityId']
+    if ($loc -is [array]) { $loc = $loc[0] }
+    if ($loc -match '\(([0-9a-fA-F\-]{36})\)') { $sitemapId = $matches[1] }
+    Write-Host "  [create] sitemap -> $sitemapId" -ForegroundColor Green
+
+    # Link sitemap to appmodule via N:N
+    try {
+        Invoke-Dv -Method POST -Path "appmodules($AppId)/appmodule_sitemap/`$ref" -Body @{
+            "@odata.id" = "$OrgUrl/api/data/v9.2/sitemaps($sitemapId)"
+        } | Out-Null
+        Write-Host "  [link]  sitemap -> app" -ForegroundColor Green
+    } catch {
+        $m = $_.Exception.Message
+        if ($_.ErrorDetails.Message) { $m = $_.ErrorDetails.Message }
+        Write-Host "  [warn] link sitemap: $m" -ForegroundColor DarkYellow
+    }
+}
+
+# ============================================================================
+# STEP 2: Add entities to the appmodule via AddAppComponents
+# ============================================================================
+Write-Host "`nStep 2: Add 10 RMA entities to the app" -ForegroundColor Cyan
+
+$entities = @(
+    "rma_claim", "rma_emaillog", "rma_approvalrecord",
+    "rma_plant", "rma_routingrule", "rma_plantapprover",
+    "rma_emailtemplate", "rma_emailsignature",
+    "rma_claimnote", "rma_approvalhistory"
+)
+
+foreach ($e in $entities) {
+    try {
+        $em = Invoke-Dv -Method GET -Path "EntityDefinitions(LogicalName='$e')?`$select=LogicalName,MetadataId"
+        Invoke-Dv -Method POST -Path "appmodules($AppId)/Microsoft.Dynamics.CRM.AddAppComponents" -Body @{
+            Components = @(
+                @{
+                    "@odata.id" = "$OrgUrl/api/data/v9.2/EntityDefinitions($($em.MetadataId))"
+                }
+            )
+        } | Out-Null
+        Write-Host "  [add] $e" -ForegroundColor Green
+    } catch {
+        $m = $_.Exception.Message
+        if ($_.ErrorDetails.Message) { $m = $_.ErrorDetails.Message }
+        if ($m -match 'already|duplicate|exists as a component') {
+            Write-Host "  [skip] $e already in app" -ForegroundColor DarkGray
+        } else {
+            Write-Host "  [warn] $e : $m" -ForegroundColor DarkYellow
+        }
+    }
+}
+
+# ============================================================================
+# STEP 3: Publish
+# ============================================================================
+Write-Host "`nStep 3: Publish" -ForegroundColor Cyan
+try {
+    $publishXml = "<importexportxml><appmodules><appmodule>$AppId</appmodule></appmodules>"
+    if ($sitemapId) { $publishXml += "<sitemaps><sitemap>$sitemapId</sitemap></sitemaps>" }
+    $publishXml += "</importexportxml>"
+    Invoke-Dv -Method POST -Path "PublishXml" -Body @{ ParameterXml = $publishXml } | Out-Null
+    Write-Host "  [ok] publish" -ForegroundColor Green
+} catch {
+    $m = $_.Exception.Message
+    if ($_.ErrorDetails.Message) { $m = $_.ErrorDetails.Message }
+    Write-Host "  [warn] publish: $m" -ForegroundColor DarkYellow
+}
+
+# ============================================================================
+# Summary
+# ============================================================================
+Write-Host "`n=== DONE ===" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Open the app:" -ForegroundColor Yellow
+Write-Host "  $OrgUrl/main.aspx?appid=$AppId"
+Write-Host ""
+Write-Host "What you should see:" -ForegroundColor Yellow
+Write-Host "  - Left nav with 3 groups: Daily Work / Configuration / History"
+Write-Host "  - 10 entities accessible from nav"
+Write-Host "  - Default views/forms (next phase customizes)"
+Write-Host ""
+Write-Host "If the nav looks empty, hard-refresh (Ctrl+F5)." -ForegroundColor DarkGray
